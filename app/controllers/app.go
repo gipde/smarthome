@@ -1,7 +1,12 @@
 package controllers
 
 import (
+	"crypto/rand"
+	"encoding/json"
+	"fmt"
 	"github.com/revel/revel"
+	"io"
+	"time"
 )
 
 type App struct {
@@ -13,382 +18,84 @@ func (c App) Index() revel.Result {
 	return c.Render(greeting)
 }
 
-func (c App) Hello(myName string) revel.Result {
-	c.Validation.Required(myName).Message("Your name is required!")
-	c.Validation.MinSize(myName, 3).Message("Your name is not long enough!")
+type Request struct {
+	Directive struct {
+		Header struct {
+			MessageID        string
+			Name             string
+			Namespace        string
+			PayloadVersion   string
+			CorrelationToken string
+		}
+		Endpoint struct {
+			Scope struct {
+				Type  string
+				Token string
+			}
+			EndpointID string
+		}
 
-	if c.Validation.HasErrors() {
-		c.Validation.Keep()
-		c.FlashParams()
-		return c.Redirect(App.Index)
+		Payload map[string]interface{}
 	}
-
-	return c.Render(myName)
 }
 
-func (c App) Discover() revel.Result {
+var powerState = "ON"
 
-	var jsonBlobS = `
-	{
-		"event": {
-		  "header": {
-			"namespace": "Alexa.Discovery",
-			"name": "Discover.Response",
-			"payloadVersion": "3",
-			"messageId": "5f8a426e-01e4-4cc9-8b79-65f8bd0fd8a4"
-		  },
-		  "payload": {
-			"endpoints": [
-			  {
-				"endpointId": "appliance-001",
-				"friendlyName": "Living Room Light",
-				"description": "Smart Light by Sample Manufacturer",
-				"manufacturerName": "Sample Manufacturer",
-				"displayCategories": [
-				  "LIGHT"
-				],
-				"cookie": {
-				  "extraDetail1": "optionalDetailForSkillAdapterToReferenceThisDevice",
-				  "extraDetail2": "There can be multiple entries",
-				  "extraDetail3": "but they should only be used for reference purposes",
-				  "extraDetail4": "This is not a suitable place to maintain current device state"
-				},
-				"capabilities": [
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.ColorTemperatureController",
-					"version": "3",
-					"properties": {
-					  "supported": [
-						{
-						  "name": "colorTemperatureInKelvin"
-						}
-					  ],
-					  "proactivelyReported": true,
-					  "retrievable": true
-					}
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.EndpointHealth",
-					"version": "3",
-					"properties": {
-					  "supported": [
-						{
-						  "name": "connectivity"
-						}
-					  ],
-					  "proactivelyReported": true,
-					  "retrievable": true
-					}
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa",
-					"version": "3"
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.ColorController",
-					"version": "3",
-					"properties": {
-					  "supported": [
-						{
-						  "name": "color"
-						}
-					  ],
-					  "proactivelyReported": true,
-					  "retrievable": true
-					}
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.PowerController",
-					"version": "3",
-					"properties": {
-					  "supported": [
-						{
-						  "name": "powerState"
-						}
-					  ],
-					  "proactivelyReported": true,
-					  "retrievable": true
-					}
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.BrightnessController",
-					"version": "3",
-					"properties": {
-					  "supported": [
-						{
-						  "name": "brightness"
-						}
-					  ],
-					  "proactivelyReported": true,
-					  "retrievable": true
-					}
-				  }
-				]
-			  },
-			  {
-				"endpointId": "appliance-002",
-				"friendlyName": "Hallway Thermostat",
-				"description": "Smart Thermostat by Sample Manufacturer",
-				"manufacturerName": "Sample Manufacturer",
-				"displayCategories": [
-				  "THERMOSTAT"
-				],
-				"cookie": {},
-				"capabilities": [
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa",
-					"version": "3"
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.ThermostatController",
-					"version": "3",
-					"properties": {
-					  "supported": [
-						{
-						  "name": "lowerSetpoint"
-						},
-						{
-						  "name": "targetSetpoint"
-						},
-						{
-						  "name": "upperSetpoint"
-						},
-						{
-						  "name": "thermostatMode"
-						}
-					  ],
-					  "proactivelyReported": true,
-					  "retrievable": true
-					}
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.TemperatureSensor",
-					"version": "3",
-					"properties": {
-					  "supported": [
-						{
-						  "name": "temperature"
-						}
-					  ],
-					  "proactivelyReported": false,
-					  "retrievable": true
-					}
-				  }
-				]
-			  },
-			  {
-				"endpointId": "appliance-003",
-				"friendlyName": "Front Door",
-				"description": "Smart Lock by Sample Manufacturer",
-				"manufacturerName": "Sample Manufacturer",
-				"displayCategories": [
-				  "SMARTLOCK"
-				],
-				"cookie": {},
-				"capabilities": [
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.LockController",
-					"version": "3",
-					"properties": {
-					  "supported": [
-						{
-						  "name": "lockState"
-						}
-					  ],
-					  "proactivelyReported": true,
-					  "retrievable": true
-					}
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.EndpointHealth",
-					"version": "3",
-					"properties": {
-						"supported": [
-							{
-								"name": "connectivity"
-							}
-						],
-						"proactivelyReported": true,
-						"retrievable": true
-					}
-				  }
-				]
-			  },
-			  {
-				"endpointId": "appliance-004",
-				"friendlyName": "Goodnight",
-				"description": "Smart Scene by Sample Manufacturer",
-				"manufacturerName": "Sample Manufacturer",
-				"displayCategories": [
-				  "SCENE_TRIGGER"
-				],
-				"cookie": {},
-				"capabilities": [
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.SceneController",
-					"version": "3",
-					"supportsDeactivation": false,
-					"proactivelyReported": true
-				  }
-				]
-			  },
-			  {
-				"endpointId": "appliance-005",
-				"friendlyName": "Watch TV",
-				"description": "Smart Activity by Sample Manufacturer",
-				"manufacturerName": "Sample Manufacturer",
-				"displayCategories": [
-				  "ACTIVITY_TRIGGER"
-				],
-				"cookie": {},
-				"capabilities": [
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa",
-					"version": "3"
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.SceneController",
-					"version": "3",
-					"supportsDeactivation": true,
-					"proactivelyReported": true
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.EndpointHealth",
-					"version": "3",
-					"properties": {
-						"supported": [
-							{
-								"name": "connectivity"
-							}
-						],
-						"proactivelyReported": true,
-						"retrievable": true
-					}
-				  }
-				]
-			  },
-			  {
-				"endpointId": "appliance-006",
-				"friendlyName": "Back Door Camera",
-				"description": "Smart Camera by Sample Manufacturer",
-				"manufacturerName": "Sample Manufacturer",
-				"displayCategories": [
-				  "CAMERA"
-				],
-				"cookie": {},
-				"capabilities": [
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa",
-					"version": "3"
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.CameraStreamController",
-					"version": "3",
-					"cameraStreamConfigurations": [
-					  {
-						"protocols": [
-						  "RTSP"
-						],
-						"resolutions": [
-						  {
-							"width": 1920,
-							"height": 1080
-						  },
-						  {
-							"width": 1280,
-							"height": 720
-						  }
-						],
-						"authorizationTypes": [
-						  "BASIC"
-						],
-						"videoCodecs": [
-						  "H264",
-						  "MPEG2"
-						],
-						"audioCodecs": [
-						  "G711"
-						]
-					  },
-					  {
-						"protocols": [
-						  "RTSP"
-						],
-						"resolutions": [
-						  {
-							"width": 1920,
-							"height": 1080
-						  },
-						  {
-							"width": 1280,
-							"height": 720
-						  }
-						],
-						"authorizationTypes": [
-						  "NONE"
-						],
-						"videoCodecs": [
-						  "H264"
-						],
-						"audioCodecs": [
-						  "AAC"
-						]
-					  }
-					]
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.PowerController",
-					"version": "3",
-					"properties": {
-					  "supported": [
-						{
-						  "name": "powerState"
-						}
-					  ],
-					  "proactivelyReported": true,
-					  "retrievable": true
-					}
-				  },
-				  {
-					"type": "AlexaInterface",
-					"interface": "Alexa.EndpointHealth",
-					"version": "3",
-					"properties": {
-						"supported": [
-							{
-								"name": "connectivity"
-							}
-						],
-						"proactivelyReported": true,
-						"retrievable": true
-					}
-				  }
-				]
-			  }
-			]
-		  }
-		}
-	  }
-	  
-	`
+func (c App) Alexa() revel.Result {
+
+	var r Request
+
+	c.Params.BindJSON(&r)
+	c.prettyprint(r)
 	c.Response.ContentType = "application/json"
-	return c.RenderText(jsonBlobS)
+
+	c.ViewArgs["corrId"] = r.Directive.Header.CorrelationToken
+	c.ViewArgs["uuid"] = newUUID()
+	c.ViewArgs["timestamp"] = time.Now().Format("2006-01-02T15:04:05.00Z")
+
+	switch r.Directive.Header.Name {
+	case "Discover":
+		return c.RenderTemplate("App/discovery.json")
+
+	case "ReportState":
+		switch r.Directive.Endpoint.EndpointID {
+		case "heizung-001":
+			return c.RenderTemplate("App/heating.state.json")
+		case "schalter-001":
+			c.ViewArgs["powerState"] = powerState
+			return c.RenderTemplate("App/schalter.state.json")
+		}
+
+	case "TurnOn":
+		return c.doSwitch("ON")
+	case "TurnOff":
+		return c.doSwitch("OFF")
+
+	}
+
+	return c.RenderText("Hello")
+}
+
+func (c App) doSwitch(state string) revel.Result {
+	c.Log.Info("SWITCH State: " + state)
+	powerState = state
+	c.ViewArgs["powerState"] = powerState
+	return c.RenderTemplate("App/schalter.toggle.json")
+}
+func (c App) prettyprint(jsonData Request) {
+	st, _ := json.MarshalIndent(jsonData, "", "    ")
+	c.Log.Info(string(st))
+}
+
+func newUUID() string {
+	uuid := make([]byte, 16)
+	io.ReadFull(rand.Reader, uuid)
+	// if n != len(uuid) || err != nil {
+	// 	return "", err
+	// }
+	// variant bits; see section 4.1.1
+	uuid[8] = uuid[8]&^0xc0 | 0x80
+	// version 4 (pseudo-random); see section 4.1.3
+	uuid[6] = uuid[6]&^0xf0 | 0x40
+	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
 }

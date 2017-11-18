@@ -1,0 +1,20 @@
+{
+    "context": {
+        "properties": [{
+            "namespace": "Alexa.PowerController",
+            "name": "powerState",
+            "value": "{{.powerState}}",
+            "timeOfSample": "{{.timestamp}}",
+            "uncertaintyInMilliseconds": 100
+        }]
+    },
+    "event": {
+        "header": {
+            "namespace": "Alexa",
+            "name": "Response",
+            "payloadVersion": "3",
+            "messageId": "{{.uuid}}"
+        },
+        "payload": {}
+    }
+}
