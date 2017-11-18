@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"github.com/revel/revel"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"time"
 )
 
-type App struct {
-	*revel.Controller
-}
+const rpi = "http://raspberrypi/"
 
-func (c App) Index() revel.Result {
-	greeting := "Aloha World"
-	return c.Render(greeting)
+type Controller struct {
+	State string
 }
 
 type Request struct {
@@ -34,19 +33,23 @@ type Request struct {
 			}
 			EndpointID string
 		}
-
 		Payload map[string]interface{}
 	}
 }
 
-var powerState = "ON"
+type App struct {
+	*revel.Controller
+}
+
+func (c App) Index() revel.Result {
+	return c.Alexa()
+}
 
 func (c App) Alexa() revel.Result {
 
 	var r Request
-
 	c.Params.BindJSON(&r)
-	c.prettyprint(r)
+
 	c.Response.ContentType = "application/json"
 
 	c.ViewArgs["corrId"] = r.Directive.Header.CorrelationToken
@@ -62,7 +65,7 @@ func (c App) Alexa() revel.Result {
 		case "heizung-001":
 			return c.RenderTemplate("App/heating.state.json")
 		case "schalter-001":
-			c.ViewArgs["powerState"] = powerState
+			c.ViewArgs["powerState"] = getSwitchState()
 			return c.RenderTemplate("App/schalter.state.json")
 		}
 
@@ -72,16 +75,28 @@ func (c App) Alexa() revel.Result {
 		return c.doSwitch("OFF")
 
 	}
-
-	return c.RenderText("Hello")
+	c.Response.Status = 500
+	return c.RenderText("Error")
 }
 
 func (c App) doSwitch(state string) revel.Result {
 	c.Log.Info("SWITCH State: " + state)
-	powerState = state
-	c.ViewArgs["powerState"] = powerState
-	return c.RenderTemplate("App/schalter.toggle.json")
+	response := doHTTP(rpi + state)
+	c.ViewArgs["powerState"] = getController(response).State
+	return c.RenderTemplate("App/schalter.switch.json")
 }
+
+func getSwitchState() string {
+	response := doHTTP(rpi + "state")
+	return getController(response).State
+}
+func getController(jsonData []byte) Controller {
+	var pc Controller
+	json.Unmarshal(jsonData, &pc)
+	revel.AppLog.Info("Got State: " + pc.State)
+	return pc
+}
+
 func (c App) prettyprint(jsonData Request) {
 	st, _ := json.MarshalIndent(jsonData, "", "    ")
 	c.Log.Info(string(st))
@@ -90,12 +105,21 @@ func (c App) prettyprint(jsonData Request) {
 func newUUID() string {
 	uuid := make([]byte, 16)
 	io.ReadFull(rand.Reader, uuid)
-	// if n != len(uuid) || err != nil {
-	// 	return "", err
-	// }
-	// variant bits; see section 4.1.1
 	uuid[8] = uuid[8]&^0xc0 | 0x80
-	// version 4 (pseudo-random); see section 4.1.3
 	uuid[6] = uuid[6]&^0xf0 | 0x40
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
+}
+
+func doHTTP(uri string) []byte {
+	revel.AppLog.Info("Calling: " + uri)
+	resp, err := http.Get(uri)
+	if err != nil {
+		revel.AppLog.Error("Error getting Controller State: " + err.Error())
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		revel.AppLog.Error("Error getting Request Body: " + err.Error())
+	}
+	return body
 }
