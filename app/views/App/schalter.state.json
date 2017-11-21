@@ -27,7 +27,7 @@
             "correlationToken": "{{.corrId}}"
         },
         "endpoint": {
-            "endpointId": "schalter-001",
+            "endpointId": "zirkulationspumpe-001",
             "Scope": {
                 "Type": "BearerToken",
                 "Token": "mF_9.B5f-4.1JqM"

@@ -7,7 +7,9 @@
             "messageId": "5f8a426e-01e4-4cc9-8b79-65f8bd0fd8a4"
         },
         "payload": {
-            "endpoints": [{
+            "endpoints": [
+
+                {
                     "endpointId": "heizung-001",
                     "friendlyName": "Heizung Warmwasser",
                     "description": "Temperatursensor Heizung Warmwasser",
@@ -27,13 +29,14 @@
                             "retrievable": true
                         }
                     }]
-                }, {
-                    "endpointId": "schalter-001",
-                    "friendlyName": "Lichtschalter Küche",
-                    "description": "Control zum Test von Alexa",
+                },
+                {
+                    "endpointId": "zirkulationspumpe-001",
+                    "friendlyName": "Zirkulationspumpe",
+                    "description": "Zierkulationspumpe ",
                     "manufacturerName": "Werner",
                     "displayCategories": [
-                        "LIGHT"
+                        "SWITCH"
                     ],
                     "capabilities": [{
                             "type": "AlexaInterface",
@@ -68,7 +71,252 @@
                     "description": "Control zum Test von Alexa",
                     "manufacturerName": "Werner",
                     "displayCategories": [
-                        "LIGHT"
+                        "TV"
+                    ],
+                    "capabilities": [{
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.EndpointHealth",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "connectivity"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        },
+                        {
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.PowerController",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "powerState"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        }
+                    ]
+
+                },
+                {
+                    "endpointId": "camera-001",
+                    "friendlyName": "CustomControl",
+                    "description": "Control zum Test von Alexa",
+                    "manufacturerName": "Werner",
+                    "displayCategories": [
+                        "THERMOSTAT"
+                    ],
+                    "capabilities": [{
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.EndpointHealth",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "connectivity"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        },
+                        {
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.PowerController",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "powerState"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        }
+                    ]
+
+                },
+                {
+                    "endpointId": "camera-002",
+                    "friendlyName": "CustomControl",
+                    "description": "Control zum Test von Alexa",
+                    "manufacturerName": "Werner",
+                    "displayCategories": [
+                        "SPEAKERS"
+                    ],
+                    "capabilities": [{
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.EndpointHealth",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "connectivity"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        },
+                        {
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.PowerController",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "powerState"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        }
+                    ]
+
+                },
+                {
+                    "endpointId": "camera-003",
+                    "friendlyName": "CustomControl",
+                    "description": "Control zum Test von Alexa",
+                    "manufacturerName": "Werner",
+                    "displayCategories": [
+                        "SMARTPLUG"
+                    ],
+                    "capabilities": [{
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.EndpointHealth",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "connectivity"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        },
+                        {
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.PowerController",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "powerState"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        }
+                    ]
+
+                },
+                {
+                    "endpointId": "camera-003",
+                    "friendlyName": "CustomControl",
+                    "description": "Control zum Test von Alexa",
+                    "manufacturerName": "Werner",
+                    "displayCategories": [
+                        "SMARTLOCK"
+                    ],
+                    "capabilities": [{
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.EndpointHealth",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "connectivity"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        },
+                        {
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.PowerController",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "powerState"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        }
+                    ]
+
+                },
+                {
+                    "endpointId": "camera-004",
+                    "friendlyName": "CustomControl",
+                    "description": "Control zum Test von Alexa",
+                    "manufacturerName": "Werner",
+                    "displayCategories": [
+                        "SCENE_TRIGGER"
+                    ],
+                    "capabilities": [{
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.EndpointHealth",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "connectivity"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        },
+                        {
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.PowerController",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "powerState"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        }
+                    ]
+
+                },
+                {
+                    "endpointId": "camera-005",
+                    "friendlyName": "CustomControl",
+                    "description": "Control zum Test von Alexa",
+                    "manufacturerName": "Werner",
+                    "displayCategories": [
+                        "OTHER"
+                    ],
+                    "capabilities": [{
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.EndpointHealth",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "connectivity"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        },
+                        {
+                            "type": "AlexaInterface",
+                            "interface": "Alexa.PowerController",
+                            "version": "3",
+                            "properties": {
+                                "supported": [{
+                                    "name": "powerState"
+                                }],
+                                "proactivelyReported": true,
+                                "retrievable": true
+                            }
+                        }
+                    ]
+
+                },
+                {
+                    "endpointId": "camera-006",
+                    "friendlyName": "CustomControl",
+                    "description": "Control zum Test von Alexa",
+                    "manufacturerName": "Werner",
+                    "displayCategories": [
+                        "ACTIVITY_TRIGGER"
                     ],
                     "capabilities": [{
                             "type": "AlexaInterface",
@@ -97,6 +345,7 @@
                     ]
 
                 }
+
             ]
         }
     }

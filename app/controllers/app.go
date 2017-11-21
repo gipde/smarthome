@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const rpi = "http://raspberrypi/"
+const rpi = "http://ds1820ws/"
 
 type Controller struct {
 	State string
@@ -61,10 +61,11 @@ func (c App) Alexa() revel.Result {
 		return c.RenderTemplate("App/discovery.json")
 
 	case "ReportState":
+		c.Log.Info("Report State: " + r.Directive.Endpoint.EndpointID)
 		switch r.Directive.Endpoint.EndpointID {
 		case "heizung-001":
 			return c.RenderTemplate("App/heating.state.json")
-		case "schalter-001":
+		case "zirkulationspumpe-001":
 			c.ViewArgs["powerState"] = getSwitchState()
 			return c.RenderTemplate("App/schalter.state.json")
 		}
@@ -111,7 +112,6 @@ func newUUID() string {
 }
 
 func doHTTP(uri string) []byte {
-	revel.AppLog.Info("Calling: " + uri)
 	resp, err := http.Get(uri)
 	if err != nil {
 		revel.AppLog.Error("Error getting Controller State: " + err.Error())
@@ -121,5 +121,6 @@ func doHTTP(uri string) []byte {
 	if err != nil {
 		revel.AppLog.Error("Error getting Request Body: " + err.Error())
 	}
+	revel.AppLog.Info("Calling: " + uri + " got " + string(body))
 	return body
 }
