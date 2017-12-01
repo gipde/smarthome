@@ -8,6 +8,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"schneidernet/smarthome/app/dao"
+	"schneidernet/smarthome/app/models"
 	"time"
 )
 
@@ -37,16 +39,11 @@ type Request struct {
 	}
 }
 
-type App struct {
+type Alexa struct {
 	*revel.Controller
 }
 
-func (c App) Index() revel.Result {
-	return c.Alexa()
-}
-
-func (c App) Alexa() revel.Result {
-
+func (c Alexa) Api() revel.Result {
 	var r Request
 	c.Params.BindJSON(&r)
 
@@ -58,16 +55,16 @@ func (c App) Alexa() revel.Result {
 
 	switch r.Directive.Header.Name {
 	case "Discover":
-		return c.RenderTemplate("App/discovery.json")
+		return c.discovery()
 
 	case "ReportState":
 		c.Log.Info("Report State: " + r.Directive.Endpoint.EndpointID)
 		switch r.Directive.Endpoint.EndpointID {
 		case "heizung-001":
-			return c.RenderTemplate("App/heating.state.json")
+			return c.RenderTemplate("Alexa/heating.state.json")
 		case "zirkulationspumpe-001":
 			c.ViewArgs["powerState"] = getSwitchState()
-			return c.RenderTemplate("App/schalter.state.json")
+			return c.RenderTemplate("Alexa/schalter.state.json")
 		}
 
 	case "TurnOn":
@@ -77,14 +74,33 @@ func (c App) Alexa() revel.Result {
 
 	}
 	c.Response.Status = 500
-	return c.RenderText("Error")
+	return c.discovery()
+	//	return c.RenderText("Error")
 }
 
-func (c App) doSwitch(state string) revel.Result {
+func (c Alexa) discovery() revel.Result {
+	response := generateDiscoveryResponse(dao.GetAllDevices())
+	return c.RenderJSON(response)
+}
+
+// maps a database entry to a json equivalent discovery response
+func generateDiscoveryResponse(devices *[]dao.Device) alexa.DiscoveryJSON {
+
+	resp := alexa.NewDiscovery(newUUID())
+	var eps []alexa.Endpoint
+
+	for _, device := range *devices {
+		eps = append(eps, dao.TransformDeviceToDescovery(&device))
+	}
+	resp.Event.PayLoad.Endpoints = eps
+	return resp
+}
+
+func (c Alexa) doSwitch(state string) revel.Result {
 	c.Log.Info("SWITCH State: " + state)
 	response := doHTTP(rpi + state)
 	c.ViewArgs["powerState"] = getController(response).State
-	return c.RenderTemplate("App/schalter.switch.json")
+	return c.RenderTemplate("Alexa/schalter.switch.json")
 }
 
 func getSwitchState() string {
@@ -98,7 +114,7 @@ func getController(jsonData []byte) Controller {
 	return pc
 }
 
-func (c App) prettyprint(jsonData Request) {
+func (c Alexa) prettyprint(jsonData Request) {
 	st, _ := json.MarshalIndent(jsonData, "", "    ")
 	c.Log.Info(string(st))
 }

@@ -7,9 +7,7 @@
             "messageId": "5f8a426e-01e4-4cc9-8b79-65f8bd0fd8a4"
         },
         "payload": {
-            "endpoints": [
-
-                {
+            "endpoints": [{
                     "endpointId": "heizung-001",
                     "friendlyName": "Heizung Warmwasser",
                     "description": "Temperatursensor Heizung Warmwasser",

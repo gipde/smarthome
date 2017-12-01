@@ -17,3 +17,6 @@
 
 - Linux:    GOOS=linux GOARCH=amd64 revel package schneidernet/smarthome
 - RPi:      GOOS=linux GOARCH=arm GOARM=6 revel package schneidernet/smarthome
+
+## TODO:
+- schöne Fehlermeldung beim Login (falscher User)

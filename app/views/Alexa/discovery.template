@@ -1,0 +1,32 @@
+{
+    "event": {
+        "header": {
+            "namespace": "Alexa.Discovery",
+            "name": "Discover.Response",
+            "payloadVersion": "3",
+            "messageId": "{{ .uuid}}"
+        },
+        "payload": {
+
+            "endpoints": [
+
+                {
+                    "endpointId": "heizung-001",
+                    "friendlyName": "Heizung Warmwasser",
+                    "description": "Temperatursensor Heizung Warmwasser",
+                    "manufacturerName": "Werner",
+                    "displayCategories": [
+                        "TEMPERATURE_SENSOR"
+                    ],
+                    {
+                        { range.capabilities } }
+                    "capabilities": [{
+                        "type": "AlexaInterface",
+                        "interface": "Alexa.TemperatureSensor",
+                        "version": "3"
+                    }]
+                }
+            ]
+        }
+    }
+}

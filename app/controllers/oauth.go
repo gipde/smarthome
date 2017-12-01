@@ -53,8 +53,6 @@ func (c Oauth) AuthorizeResponse() revel.Result {
 	return c.Redirect(redirectURL + "?code=" + code + "&state=" + state)
 }
 
-
-
 /*
 Ablauf
 1. Die Clientwebap ruft den Resource-Server mit clientid  usw. auf

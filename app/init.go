@@ -2,6 +2,8 @@ package app
 
 import (
 	"github.com/revel/revel"
+	"schneidernet/smarthome/app/dao"
+
 	"time"
 )
 
@@ -14,6 +16,7 @@ var (
 )
 
 func init() {
+	revel.AppLog.Info("Initializing...")
 	// Filters is the default set of global filters.
 	revel.Filters = []revel.Filter{
 		revel.PanicFilter,             // Recover from panics and display an error page instead.
@@ -34,9 +37,10 @@ func init() {
 	// revel.DevMode and revel.RunMode only work inside of OnAppStart. See Example Startup Script
 	// ( order dependent )
 	revel.OnAppStart(ExampleStartupScript)
-	// revel.OnAppStart(InitDB)
+	revel.OnAppStart(dao.InitDB)
+
 	// revel.OnAppStart(FillCache)
-	revel.OnAppStart(InitDB)
+	revel.AppLog.Info("Initializing Ready")
 
 }
 
