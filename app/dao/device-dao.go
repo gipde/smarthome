@@ -2,20 +2,17 @@ package dao
 
 import (
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"github.com/revel/revel"
+	"strconv"
+	"strings"
 )
 
-func debug(val interface{}) {
-	revel.AppLog.Info(fmt.Sprintf("%+v", val))
+func GetAllDevices(user string) *[]Device {
+	return getAllDevicesIntern(user, Db)
 }
-
-func GetAllDevices() *[]Device {
-	var devices []Device
-	Db.Preload("AlexaInterfaces").Preload("DisplayCategories").Find(&devices)
-	for _, d := range devices {
-		revel.AppLog.Info(fmt.Sprintf("%+v", d))
-	}
-	return &devices
+func GetAllDevicesDeep(user string) *[]Device {
+	return getAllDevicesIntern(user, Db)
 }
 
 func CreateDevice(device *Device) {
@@ -27,8 +24,17 @@ func DeleteDevice(device *Device) {
 	Db.Delete(&device)
 }
 
-func FindDeviceByID(id string) *Device {
+func FindDeviceByID(user, id string) *Device {
 	var device Device
-	Db.Find(&device, id)
+	numericID, _ := strconv.Atoi(strings.TrimPrefix(id, "device-"))
+
+	Db.Where("user_id = ?", user).Find(&device, numericID)
+
 	return &device
+}
+
+func getAllDevicesIntern(user string, db *gorm.DB) *[]Device {
+	var devices []Device
+	db.Where("user_id = ?", user).Find(&devices)
+	return &devices
 }

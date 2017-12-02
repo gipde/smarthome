@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/revel/revel"
 	"schneidernet/smarthome/app/dao"
-
 	"time"
 )
 
@@ -58,14 +57,6 @@ var HeaderFilter = func(c *revel.Controller, fc []revel.Filter) {
 func ExampleStartupScript() {
 	go markForever()
 }
-
-//func ExampleStartupScript() {
-//	// revel.DevMod and revel.RunMode work here
-//	// Use this script to check for dev mode and set dev/prod startup scripts here!
-//	if revel.DevMode == true {
-//		// Dev mode
-//	}
-//}
 
 func markForever() {
 	for {

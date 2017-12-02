@@ -21,21 +21,12 @@
                 <input type="producer" class="form-control" id="producer" placeholder="Hersteller" name="device.Producer">
             </div>
             <div class="form-group">
-                <label for="devtype">Schnittstelle:</label>
+                <label for="devtype">Gerätetyp:</label>
                 <select multiple class="form-control" name="iface">
-                        {{ range $index,$value:=.interfaces}}
+                        {{ range $index,$value:=.devicetype}}
                         <option value={{$index}} >{{$value}}</option>
                         {{ end }}
                   </select>
-            </div>
-
-            <div class="form-group">
-                <label for="display">Anzeigekategorie:</label>
-                <select multiple class="form-control" name="dcat">
-                    {{ range $index,$value:=.cats}}
-                    <option value={{$index}}>{{$value}}</option>
-                    {{ end }}
-                </select>
             </div>
             <button type="submit" class="btn btn-default">Erzeugen</button>
         </form>

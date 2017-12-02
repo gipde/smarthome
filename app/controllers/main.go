@@ -14,30 +14,32 @@ type Main struct {
 	*revel.Controller
 }
 
-func (c Main) Index() revel.Result {
-	c.Log.Info("Starte Loginseite")
-	c.Log.Info(c.Session["logged_in"])
-	if c.Session["logged_in"] == "true" {
-		return c.Redirect(routes.Main.Dashboard())
-	}
-	return c.Render()
+func init() {
+	revel.InterceptFunc(checkUser, revel.BEFORE, &Main{})
+}
 
+func (c Main) getCurrentUser() string {
+	return c.Session["useroid"]
+}
+
+func checkUser(c *revel.Controller) revel.Result {
+	c.Log.Infof("Check User: %+v", c.Session)
+	if c.Action != "Main.Index" && c.Action != "Main.Login" {
+		if c.Session["useroid"] == "" {
+			c.Flash.Error("not logged in")
+			return c.Redirect(routes.Main.Index())
+		}
+	}
+	c.ViewArgs["user"] = c.Session["userid"]
+	return nil
+}
+
+func (c Main) Index() revel.Result {
+	return c.Render()
 }
 
 func (c Main) Dashboard() revel.Result {
-	if c.Session["logged_in"] != "true" {
-		c.Flash.Error("not logged in")
-		return c.Redirect(routes.Main.Index())
-	}
-
-	devices := dao.GetAllDevices()
-
-	for _, i := range *devices {
-		c.Log.Info("Name: " + i.Name)
-	}
-	c.ViewArgs["devices"] = devices
-
-	c.ViewArgs["user"] = c.Session["user"]
+	c.ViewArgs["devices"] = dao.GetAllDevices(c.getCurrentUser())
 	return c.Render()
 }
 
@@ -45,9 +47,7 @@ func (c Main) Dashboard() revel.Result {
 func (c Main) Login(username, password string, remember bool) revel.Result {
 
 	//TODO: Remember auswerten
-
 	dbUsr := dao.GetUser(username)
-
 	if username != dbUsr.UserID {
 		c.Flash.Error("User unbekannt")
 		return c.Redirect(routes.Main.Index())
@@ -58,45 +58,27 @@ func (c Main) Login(username, password string, remember bool) revel.Result {
 		c.Flash.Error("Password false")
 		return c.Redirect(routes.Main.Index())
 	}
-
-	c.Session["logged_in"] = "true"
-	c.Session["user"] = username
+	c.Session["useroid"] = strconv.Itoa(int(dbUsr.ID))
+	c.Session["userid"] = dbUsr.UserID
 	return c.Redirect(routes.Main.Dashboard())
-
 }
 
 // Logout API
 func (c Main) Logout() revel.Result {
-	delete(c.Session, "logged_in")
+	delete(c.Session, "useroid")
+	delete(c.Session, "userid")
 	return c.Redirect(routes.Main.Index())
 }
 
 func (c Main) CreateDevice(device dao.Device) revel.Result {
-
-	iface := c.Params.Form["iface"]
-	var aInterfaces []dao.AlexaInterface
-	for _, v := range iface {
-		iv, _ := strconv.Atoi(v)
-		aInterfaces = append(aInterfaces, dao.AlexaInterface{IFace: iv})
-	}
-
-	dCat := c.Params.Form["dcat"]
-	var dCategories []dao.DisplayCategory
-	for _, v := range dCat {
-		iv, _ := strconv.Atoi(v)
-		dCategories = append(dCategories, dao.DisplayCategory{DCat: iv})
-	}
-
-	device.AlexaInterfaces = aInterfaces
-	device.DisplayCategories = dCategories
-	
-
+	oid, _ := strconv.Atoi(c.getCurrentUser())
+	device.UserID = oid
 	dao.CreateDevice(&device)
 	return c.Redirect(routes.Main.Dashboard())
 }
 
 func (c Main) DeviceList() revel.Result {
-	devices := dao.GetAllDevices()
+	devices := dao.GetAllDevices(c.getCurrentUser())
 	for _, i := range *devices {
 		c.Log.Info("Name: " + i.Name)
 	}
@@ -106,7 +88,7 @@ func (c Main) DeviceList() revel.Result {
 
 func (c Main) DeleteDevice(id string) revel.Result {
 	c.Log.Info("delete device: " + id + " ...")
-	device := dao.FindDeviceByID(id)
+	device := dao.FindDeviceByID(c.getCurrentUser(), id)
 	//TODO: Popup Question
 	//TODO: what if device do net exists
 
@@ -116,8 +98,7 @@ func (c Main) DeleteDevice(id string) revel.Result {
 }
 
 func (c Main) DeviceNew() revel.Result {
-	c.ViewArgs["cats"] = getSelList(c, alexa.CategoryMessageID, alexa.CategoryNum)
-	c.ViewArgs["interfaces"] = getSelList(c, alexa.CapabilityInterfaceMessageID, alexa.CapabilityInterfaceNums)
+	c.ViewArgs["devicetype"] = alexa.GetDeviceTypeNames()
 	return c.Render()
 }
 

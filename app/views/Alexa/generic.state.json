@@ -1,0 +1,27 @@
+{
+    "context": {
+        "properties": [{
+            "namespace": "Alexa.TemperatureSensor",
+            "name": "temperature",
+            "value": {
+                "value": 24.5,
+                "scale": "CELSIUS"
+            },
+            "timeOfSample": "{{.timestamp}}",
+            "uncertaintyInMilliseconds": 1000
+        }]
+    },
+    "event": {
+        "header": {
+            "namespace": "Alexa",
+            "name": "StateReport",
+            "payloadVersion": "3",
+            "messageId": "{{.uuid}}",
+            "correlationToken": "{{.corrId}}"
+        },
+        "endpoint": {
+            "endpointId": "appliance-001"
+        },
+        "payload": {}
+    }
+}

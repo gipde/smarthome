@@ -7,7 +7,7 @@ import (
 type DisplayCategory int
 
 const (
-	ACTIVITY_TRIGGER DisplayCategory = iota
+	ACTIVITYTRIGGER DisplayCategory = iota
 	CAMERA
 	DOOR
 	LIGHT
@@ -15,9 +15,9 @@ const (
 	SCENETRIGGER
 	SMARTLOCK
 	SMARTPLUG
-	SPEAKERS
+	SPEAKER
 	SWITCH
-	TEMPERATURSENSOR
+	TEMPERATURESENSOR
 	THERMOSTAT
 	TV
 
@@ -31,12 +31,12 @@ var displayCategories = [...]string{
 	"DOOR",
 	"LIGHT",
 	"OTHER",
-	"SCENETRIGGER",
+	"SCENE_TRIGGER",
 	"SMARTLOCK",
 	"SMARTPLUG",
-	"SPEAKERS",
+	"SPEAKER",
 	"SWITCH",
-	"TEMPERATURSENSOR",
+	"TEMPERATURE_SENSOR",
 	"THERMOSTAT",
 	"TV",
 }
@@ -44,10 +44,11 @@ var displayCategories = [...]string{
 type CapabilityInterface int
 
 const (
-	Alexa CapabilityInterface = iota
-	Authorization
-	Discovery
+	Alexa         CapabilityInterface = iota //state Reporting, implicit included
+	Authorization                            // needed for Alexa event gateway
+	Discovery                                // do discovery
 	BrightnessController
+	Calendar
 	CameraStreamController
 	ChannelController
 	ColorController
@@ -56,6 +57,7 @@ const (
 	ErrorResponse
 	InputController
 	LockController
+	MeetingClientController
 	PercentageController
 	PlaybackController
 	PowerController
@@ -75,6 +77,7 @@ var capabilityInterfaces = [...]string{
 	"Alexa.Authorization",
 	"Alexa.Discovery",
 	"Alexa.BrightnessController",
+	"Alexa.Calendar",
 	"Alexa.CameraStreamController",
 	"Alexa.ChannelController",
 	"Alexa.ColorController",
@@ -83,6 +86,7 @@ var capabilityInterfaces = [...]string{
 	"Alexa.ErrorResponse",
 	"Alexa.InputController",
 	"Alexa.LockController",
+	"Alexa.MeetingClientController",
 	"Alexa.PercentageController",
 	"Alexa.PlaybackController",
 	"Alexa.PowerController",
@@ -92,6 +96,43 @@ var capabilityInterfaces = [...]string{
 	"Alexa.StepSpeaker",
 	"Alexa.TemperatureSensor",
 	"Alexa.ThermostatController",
+}
+
+type DeviceType int
+
+const (
+	DeviceSocket DeviceType = iota
+	DeviceSwitch
+	DeviceLight
+	DeviceTemperatureSensor
+	DeviceDimmableLight
+	DeviceColorLight
+	DeviceSmartLock
+
+	DeviceTypeMessagePrefix = "alexa.devicetype"
+	DeviceTypeNum           = len(deviceType)
+)
+
+var deviceType = [...]string{
+	"Socket",
+	"Switch",
+	"Light",
+	"TemperatureSensor",
+	"DimmableLight",
+	"ColorLight",
+	"SmartLock",
+}
+
+func GetDeviceTypeNames() []string {
+	return deviceType[:]
+}
+
+func (c DeviceType) String() string {
+	return deviceType[int(c)]
+}
+
+func (c DeviceType) ID() int {
+	return int(c)
 }
 
 func (c CapabilityInterface) String() string {
@@ -105,6 +146,9 @@ func DisplayCategoryName(num int) string {
 	return displayCategories[num]
 }
 
+func (c DisplayCategory) String() string {
+	return displayCategories[c]
+}
 func (c DisplayCategory) ID() string {
 	return CategoryMessageID + "." + strconv.Itoa(int(c))
 }
@@ -113,7 +157,7 @@ type DiscoveryJSON struct {
 	Event struct {
 		Header struct {
 			Namespace      string `json:"namespace"`
-			Name           string `json:"version"`
+			Name           string `json:"name"`
 			PayLoadVersion string `json:"payloadVersion"`
 			MessageID      string `json:"messageId"`
 		} `json:"header"`
@@ -124,12 +168,18 @@ type DiscoveryJSON struct {
 }
 
 type Endpoint struct {
-	EndpointID        string       `json:"endpointId"`
-	FriendlyName      string       `json:"friendlyName"`
-	Description       string       `json:"description"`
-	ManufacturerName  string       `json:"manufacturerName"`
-	DisplayCategories []string     `json:"displayCategories"`
-	Capabilities      []Capability `json:"capabilities"`
+	EndpointID        string        `json:"endpointId"`
+	FriendlyName      string        `json:"friendlyName"`
+	Description       string        `json:"description"`
+	ManufacturerName  string        `json:"manufacturerName"`
+	DisplayCategories []string      `json:"displayCategories"`
+	Capabilities      []Capability  `json:"capabilities"`
+	Cookie            []CookieEntry `json:"cookie,omitempty"`
+}
+
+type CookieEntry struct {
+	Name  string
+	Value string
 }
 
 type Capability struct {

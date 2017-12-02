@@ -18,24 +18,11 @@ type User struct {
 
 type Device struct {
 	gorm.Model
-	UserID            int
-	Name              string
-	Description       string
-	Producer          string
-	AlexaInterfaces   []AlexaInterface
-	DisplayCategories []DisplayCategory
-}
-
-type AlexaInterface struct {
-	ID       int `gorm:"primary_key"`
-	IFace    int
-	DeviceID int
-}
-
-type DisplayCategory struct {
-	ID       int `gorm:"primary_key"`
-	DCat     int
-	DeviceID int
+	UserID      int
+	Name        string
+	Description string
+	Producer    string
+	DeviceType  int
 }
 
 var Db *gorm.DB
@@ -54,8 +41,6 @@ func InitDB() {
 	Db = DbInt.Debug().AutoMigrate(
 		&User{},
 		&Device{},
-		&AlexaInterface{},
-		&DisplayCategory{},
 	)
 
 	user := User{Name: "Werner Schneider", UserID: "werner"}

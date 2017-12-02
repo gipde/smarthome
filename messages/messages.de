@@ -36,3 +36,10 @@ alexa.cap_interface.18=StepSpeaker
 alexa.cap_interface.19=TemperatureSensor
 alexa.cap_interface.20=ThermostatController
 
+alexa.devicetype.0=Steckdose
+alexa.devicetype.1=Schalter
+alexa.devicetype.2=Licht
+alexa.devicetype.3=TemperaturSensor
+alexa.devicetype.4=Dimmbares Licht
+alexa.devicetype.5=Farblicht
+alexa.devicetype.6=Türschloss

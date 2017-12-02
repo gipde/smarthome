@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"schneidernet/smarthome/app/dao"
 	"schneidernet/smarthome/app/models"
+	"strconv"
 	"time"
 )
 
@@ -39,33 +40,94 @@ type Request struct {
 	}
 }
 
+type Properties struct {
+	Namesapce                 string      `json:"namespace"`
+	Name                      string      `json:"name"`
+	Value                     interface{} `json:"value"`
+	TimeOfSample              string      `json:"timeOfSample"`
+	UncertaintyInMilliseconds int         `json:"uncertainityInMilliseconds"`
+}
+type StateReport struct {
+	Context struct {
+		Properties []Properties `json:"properties"`
+	} `json:"context"`
+	Event struct {
+		Header struct {
+			Namesapce        string `json:"namespace"`
+			Name             string `json:"name"`
+			PayloadVersion   string `json:"payloadVersion"`
+			MessageID        string `json:"messageId"`
+			CorrelationToken string `json:"correlationToken"`
+		} `json:"header"`
+		Endpoint struct {
+			EndpointID string `json:"endpointId"`
+		} `json:"endpoint"`
+		PayLoad interface{} `json:"payload,omitempty"`
+	} `json:"event"`
+}
+
+// check Auth for axea requests
+func checkOauth2(token string) (error, string) {
+	//r := Request{}
+	user := dao.GetUser("werner")
+	return nil, strconv.Itoa(int(user.ID))
+}
+
+func (c Alexa) reportStateHandler(request Request, device *dao.Device) revel.Result {
+	var s StateReport
+	s.Event.Endpoint.EndpointID = request.Directive.Endpoint.EndpointID
+	s.Event.Header.Namesapce = "Alexa"
+	s.Event.Header.Name = "StateReport"
+	s.Event.Header.PayloadVersion = "3"
+	s.Event.Header.CorrelationToken = request.Directive.Header.CorrelationToken
+	s.Event.Header.MessageID = newUUID()
+
+	c.Log.Infof("Device: %+v ", *device)
+	s.Context.Properties = []Properties{}
+	alexaInterfaces, _ := dao.GetAlexaInterfaceMapping(device.DeviceType)
+	for _, iface := range alexaInterfaces {
+		c.Log.Infof("Loop Interfaces: %+v", iface)
+
+		for _, pname := range dao.GetAlexaInterfaceProperties(iface) {
+			c.Log.Infof("Loop Properties: %+v", pname)
+			prop := Properties{
+				Namesapce: "Alexa",
+				Name:      pname,
+				Value:     "true",
+				//TODO: Value Fix
+				TimeOfSample:              time.Now().Format("2006-01-02T15:04:05.00Z"),
+				UncertaintyInMilliseconds: 100,
+			}
+			s.Context.Properties = append(s.Context.Properties, prop)
+
+		}
+	}
+	c.Log.Infof("Report State for device %+v answer %+v", device, s)
+	return c.RenderJSON(s)
+}
+
 type Alexa struct {
 	*revel.Controller
 }
 
-func (c Alexa) Api() revel.Result {
-	var r Request
-	c.Params.BindJSON(&r)
+func (c Alexa) Api(r Request) revel.Result {
+	c.Log.Debugf("API Request: %+v", r)
+
+	err, useroid := checkOauth2(r.Directive.Header.CorrelationToken)
+	if err != nil {
+		return c.RenderError(err)
+	}
 
 	c.Response.ContentType = "application/json"
 
-	c.ViewArgs["corrId"] = r.Directive.Header.CorrelationToken
-	c.ViewArgs["uuid"] = newUUID()
-	c.ViewArgs["timestamp"] = time.Now().Format("2006-01-02T15:04:05.00Z")
-
 	switch r.Directive.Header.Name {
+
 	case "Discover":
-		return c.discovery()
+		return c.discovery(useroid)
 
 	case "ReportState":
-		c.Log.Info("Report State: " + r.Directive.Endpoint.EndpointID)
-		switch r.Directive.Endpoint.EndpointID {
-		case "heizung-001":
-			return c.RenderTemplate("Alexa/heating.state.json")
-		case "zirkulationspumpe-001":
-			c.ViewArgs["powerState"] = getSwitchState()
-			return c.RenderTemplate("Alexa/schalter.state.json")
-		}
+		return c.reportStateHandler(
+			r, dao.FindDeviceByID(useroid, r.Directive.Endpoint.EndpointID))
 
 	case "TurnOn":
 		return c.doSwitch("ON")
@@ -74,23 +136,22 @@ func (c Alexa) Api() revel.Result {
 
 	}
 	c.Response.Status = 500
-	return c.discovery()
-	//	return c.RenderText("Error")
+	return c.discovery(useroid)
+	//return c.RenderText("Error")
 }
 
-func (c Alexa) discovery() revel.Result {
-	response := generateDiscoveryResponse(dao.GetAllDevices())
+func (c Alexa) discovery(useroid string) revel.Result {
+	response := generateDiscoveryResponse(dao.GetAllDevicesDeep(useroid))
 	return c.RenderJSON(response)
 }
 
 // maps a database entry to a json equivalent discovery response
 func generateDiscoveryResponse(devices *[]dao.Device) alexa.DiscoveryJSON {
-
 	resp := alexa.NewDiscovery(newUUID())
 	var eps []alexa.Endpoint
 
 	for _, device := range *devices {
-		eps = append(eps, dao.TransformDeviceToDescovery(&device))
+		eps = append(eps, dao.TransformDeviceToDiscovery(&device))
 	}
 	resp.Event.PayLoad.Endpoints = eps
 	return resp
