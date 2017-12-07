@@ -9,19 +9,19 @@
             <div class="panel panel-login">
                 <div class="panel-heading">
                     <div class="row">
-                        <div class="col-xs-6">
+                        <div class="col-xs-10">
                             <a href="#" class="active" id="login-form-link">Login</a>
                         </div>
-                        <div class="col-xs-6">
+                        <!-- <div class="col-xs-6">
                             <a href="#" id="register-form-link">Register</a>
-                        </div>
+                        </div> -->
                     </div>
                     <hr>
                 </div>
                 <div class="panel-body">
                     <div class="row">
                         <div class="col-lg-12">
-                            <form id="login-form" action="/main/login" method="post" role="form" style="display: block;">
+                            <form id="login-form" action="{{.action}}" method="post" role="form" style="display: block;">
                                 <div class="form-group">
                                     <input type="text" name="username" id="username" tabindex="1" class="form-control" placeholder="Username" value="">
                                 </div>
@@ -29,8 +29,8 @@
                                     <input type="password" name="password" id="password" tabindex="2" class="form-control" placeholder="Password">
                                 </div>
                                 <div class="form-group text-center">
-                                    <input type="checkbox" tabindex="3" class="" name="remember" id="remember">
-                                    <label for="remember"> Remember Me</label>
+                                    <!-- <input type="checkbox" tabindex="3" class="" name="remember" id="remember"> -->
+                                    <!-- <label for="remember"> Remember Me</label> -->
                                 </div>
                                 <div class="form-group">
                                     <div class="row">
@@ -39,6 +39,8 @@
                                         </div>
                                     </div>
                                 </div>
+                                {{ range $key, $value := .hidden }}
+                                <input type="hidden" name="{{$key}}" value="{{$value}}"> {{ end}}
                                 <div class="form-group">
                                     <div class="row">
                                         <div class="col-lg-12">
@@ -49,7 +51,7 @@
                                     </div>
                                 </div>
                             </form>
-                            <form id="register-form" action="/login/register" method="post" role="form" style="display: none;">
+                            <!-- <form id="register-form" action="/login/register" method="post" role="form" style="display: none;">
                                 <div class="form-group">
                                     <input type="text" name="username" id="username" tabindex="1" class="form-control" placeholder="Username" value="">
                                 </div>
@@ -69,11 +71,16 @@
                                         </div>
                                     </div>
                                 </div>
-                            </form>
+                            </form> -->
                         </div>
                     </div>
                 </div>
             </div>
+
+            <div class="text-center">
+                <a href="{{.google_url}}"><button class="btn btn-default">Login with Google!</button> </a>
+            </div>
+
         </div>
     </div>
 </div>

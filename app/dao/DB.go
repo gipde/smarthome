@@ -10,10 +10,11 @@ import (
 
 type User struct {
 	gorm.Model
-	UserID   string
-	Name     string
-	Password []byte
-	Devices  []Device
+	UserID     string
+	Name       string
+	Password   []byte
+	Devices    []Device
+	OAuthToken []OauthToken
 }
 
 type Device struct {
@@ -23,6 +24,11 @@ type Device struct {
 	Description string
 	Producer    string
 	DeviceType  int
+}
+
+type OauthToken struct {
+	gorm.Model
+	UserID int
 }
 
 var Db *gorm.DB

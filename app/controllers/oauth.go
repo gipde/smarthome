@@ -52,17 +52,3 @@ func (c Oauth) AuthorizeResponse() revel.Result {
 	c.Response.ContentType = "application/x-www-form-urlencoded"
 	return c.Redirect(redirectURL + "?code=" + code + "&state=" + state)
 }
-
-/*
-Ablauf
-1. Die Clientwebap ruft den Resource-Server mit clientid  usw. auf
-2. der resource-server authentifiziert den user
-	- im Schritt 1 erfolgt ein Redirect da der User noch nicht eingeloggt ist.
-	- user muss Authorisierung bestätigen
-3. der resource-server sendet einen redirect an die in 1 übergebene url hier enthalten ist der
-   authorization code (z.B. http://localhost:9094/oauth2?code=4BFSDCFJP6SEIKAGE6ZSXA&state=xyz)
-4. der autorization code wird durch einen access token getauscht
-   hierbei wird clientid, clientsecret, granttype
-5. der Server antwortet mit access-token
-6. die cleintwebap kann mit dem access-token auf resourcen zugreifen
-*/

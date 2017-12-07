@@ -11,7 +11,7 @@ body {
 
 .panel-login>.panel-heading {
     color: #00415d;
-    background-color: #fff;
+    /* background-color: #fff; */
     border-color: #fff;
     text-align: center;
 }

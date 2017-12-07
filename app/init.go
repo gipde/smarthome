@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/revel/revel"
+	"net/http"
 	"schneidernet/smarthome/app/dao"
 	"time"
 )
@@ -35,11 +36,13 @@ func init() {
 	// Register startup functions with OnAppStart
 	// revel.DevMode and revel.RunMode only work inside of OnAppStart. See Example Startup Script
 	// ( order dependent )
+	revel.OnAppStart(installHandlers)
 	revel.OnAppStart(ExampleStartupScript)
 	revel.OnAppStart(dao.InitDB)
 
 	// revel.OnAppStart(FillCache)
 	revel.AppLog.Info("Initializing Ready")
+	//revel.AppLog.Info("Current Engin: " + revel.CurrentEngine.Name())
 
 }
 
@@ -63,4 +66,28 @@ func markForever() {
 		revel.AppLog.Info("--MARK--")
 		time.Sleep(30 * time.Second)
 	}
+}
+
+// func myHandler(w http.ResponseWriter, req *http.Request) {
+// 	fmt.Fprintf(w, "Welcome to my Handler!")
+// }
+
+func installHandlers() {
+	revel.AddInitEventHandler(func(event int, _ interface{}) (r int) {
+		if event == revel.ENGINE_STARTED {
+
+			srvHandler := &revel.CurrentEngine.(*revel.GoHttpServer).Server.Handler
+			revelHandler := *srvHandler
+
+			serveMux := http.NewServeMux()
+			serveMux.Handle("/", revelHandler) // the old handler
+			serveMux.Handle("/oauth2/auth",
+				http.HandlerFunc(AuthorizeHandlerFunc)) // the oauth2
+			serveMux.Handle("/oauth2/token",
+				http.HandlerFunc(TokenHandlerFunc)) // the oauth2
+
+			*srvHandler = serveMux
+		}
+		return
+	})
 }
