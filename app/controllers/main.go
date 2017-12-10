@@ -17,6 +17,7 @@ import (
 	"schneidernet/smarthome/app/models"
 	"schneidernet/smarthome/app/routes"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -57,36 +58,56 @@ func (c Main) UpdateUser(user dao.User) revel.Result {
 func checkUser(c *revel.Controller) revel.Result {
 	c.Log.Infof("Check User: %+v in %+v", c.Session, c.Action)
 
+	// diese Seiten benötigen kein Login
+	if c.Action == "Main.Index" ||
+		c.Action == "Main.Login" ||
+		c.Action == "Main.OAuth2CallBackGoogle" {
+		return nil
+	}
+
+	// Spezialbehandlung für Oauth2 Login
 	if _, ok := c.Params.Query["checkOauth2"]; ok {
 		c.Log.Info("Checkin in oauth mode")
 		c.Flash.Data["oauth"] = "true"
 	}
 
-	isin := func(literal string, list []string) bool {
-		for _, v := range list {
-			if v == literal {
-				return true
+	// wenn das DeviceWebsocket aufgerufen wird, erlaube auch BasicAuth
+	if c.Action == "Main.DeviceFeed" {
+
+		if auth := c.Request.Header.Get("Authorization"); auth != "" {
+			// Split up the string to get just the data, then get the credentials
+			username, password, err := getCredentials(strings.Split(auth, " ")[1])
+			if err != nil {
+				return c.RenderError(err)
 			}
+			// TODO: check user/pass
+			dbUsr := dao.GetUser(username)
+			if dbUsr != nil {
+				err := bcrypt.CompareHashAndPassword(dbUsr.Password, []byte(password))
+				if err == nil {
+					c.Session["useroid"] = strconv.Itoa(int(dbUsr.ID))
+					c.Session["userid"] = dbUsr.UserID
+					c.Log.Infof("Setting User into Session %+v", c.Session)
+					// c.setUserSession(dbUsr)
+					return nil
+				}
+			}
+			c.Log.Info("We render 401")
+			return c.RenderError(errors.New("401: Not authorized"))
 		}
-		return false
-	}
-	if isin(c.Action, []string{
-		"Main.Index",
-		"Main.Login",
-		"Main.OAuth2CallBackGoogle",
-	}) {
-		return nil
 	}
 
+	// keine useroid -> zurück zur Loginseite
 	if c.Session["useroid"] == "" {
 		c.Flash.Error("not logged in")
 
-		new_cookie := &http.Cookie{
+		// Nach einer erfolgreichen Anmeldung wird zur eigentlichen angeforderten Seite gewechselt
+		newCookie := &http.Cookie{
 			Name:    REVELREDIRECT,
 			Value:   c.Request.GetRequestURI(),
 			Expires: time.Now().Add(time.Duration(5) * time.Minute),
 		}
-		c.SetCookie(new_cookie)
+		c.SetCookie(newCookie)
 		return c.Redirect(routes.Main.Index())
 	}
 
@@ -509,10 +530,29 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 			if err != nil {
 				goto EXITLOOP
 			}
-
 		case "CONNECT":
+			dev.Connected = incoming.Connected
+			dao.SaveDevice(dev)
+			incoming.Command = "STATEUPDATE"
+			incoming.State = dev.State
+			j, _ := json.Marshal(&incoming)
+
+			// send msg internally
+			c.Log.Info("We send msg internally")
+			usertopic <- string(j)
+			c.Log.Info("sent")
 
 		case "DISCONNECT":
+			dev.Connected = incoming.Connected
+			dao.SaveDevice(dev)
+			incoming.Command = "STATEUPDATE"
+			incoming.State = dev.State
+			j, _ := json.Marshal(&incoming)
+
+			// send msg internally
+			c.Log.Info("We send msg internally")
+			usertopic <- string(j)
+			c.Log.Info("sent")
 
 		}
 
@@ -522,4 +562,15 @@ EXITLOOP:
 	unregister(c.getCurrentUser(), consumer)
 	c.Log.Info("we close the Websocket :(")
 	return nil
+}
+
+func getCredentials(data string) (username, password string, err error) {
+	decodedData, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return "", "", err
+	}
+	strData := strings.Split(string(decodedData), ":")
+	username = strData[0]
+	password = strData[1]
+	return
 }

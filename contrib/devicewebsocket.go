@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"golang.org/x/net/websocket"
 	"log"
@@ -9,53 +10,54 @@ import (
 	"strings"
 )
 
-type Request struct {
-	User     string
-	Password string
-	Device   string
-	ReqType  string
-	Payload  string
-}
-
-type DevState struct {
+type DeviceCommand struct {
 	Device    string
-	State     string
 	Connected bool
+	Command   string
+	State     string
 }
 
 func doSwitch(ws *websocket.Conn, t int) error {
-	req := Request{
-		User:     "admin",
-		Password: "admin",
-		Device:   "1",
+	req := DeviceCommand{
+		Device: "device-1",
 	}
+
 	switch t {
 	case 0:
-		req.ReqType = "SWITCH_ON"
+		req.Command = "GETSTATE"
 	case 1:
-		req.ReqType = "SWITCH_OFF"
+		req.Command = "SETSTATE"
+		req.State = "ON"
 	case 2:
-		req.ReqType = "CONNECT"
+		req.Command = "SETSTATE"
+		req.State = "OFF"
 	case 3:
-		req.ReqType = "DISCONNECT"
+		req.Command = "CONNECT"
+		req.Connected = true
+	case 4:
+		req.Command = "DISCONNECT"
+		req.Connected = false
 	}
 	fmt.Printf("Send: %+v\n", req)
 	return websocket.JSON.Send(ws, &req)
 }
+func basicAuth(username, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
+}
 
 func main() {
-	fmt.Println("Hellow Orld")
 
-	origin := "http://localhost/"
-	url := "ws://localhost:9000/devicewebsocket/devicesocket"
-	ws, err := websocket.Dial(url, "", origin)
+	config, _ := websocket.NewConfig("ws://localhost:8080/Main/DeviceFeed", "http://localhost/")
+	config.Header.Add("Authorization", "Basic "+basicAuth("admin", "admin"))
+	ws, err := websocket.DialConfig(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	go func() {
 		for {
-			var msg = DevState{}
+			var msg = DeviceCommand{}
 			err := websocket.JSON.Receive(ws, &msg)
 			if err != nil {
 				fmt.Printf("Error: %+v", err)
@@ -78,14 +80,16 @@ func main() {
 		case "quit":
 			fmt.Println("we quit")
 			exit = true
-		case "on":
+		case "state":
 			err = doSwitch(ws, 0)
-		case "off":
+		case "on":
 			err = doSwitch(ws, 1)
-		case "connect":
+		case "off":
 			err = doSwitch(ws, 2)
-		case "disconnect":
+		case "connect":
 			err = doSwitch(ws, 3)
+		case "disconnect":
+			err = doSwitch(ws, 4)
 
 		}
 
