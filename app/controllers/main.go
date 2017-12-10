@@ -169,7 +169,7 @@ func (c Main) Login(username, password string, remember bool) revel.Result {
 
 	//TODO: Remember auswerten
 	dbUsr := dao.GetUser(username)
-	if username != dbUsr.UserID {
+	if dbUsr == nil {
 		c.Flash.Error("User unbekannt")
 		return c.Redirect(routes.Main.Index())
 	}
@@ -224,8 +224,35 @@ func (c Main) DeleteDevice(id string) revel.Result {
 }
 
 func (c Main) DeviceNew() revel.Result {
-	c.ViewArgs["devicetype"] = alexa.GetDeviceTypeNames()
+	i8nNames := []string{}
+	for i := 0; i < alexa.DeviceTypeNum; i++ {
+		i8nNames = append(i8nNames, c.Message("alexa.devicetype."+strconv.Itoa(i)))
+	}
+	c.ViewArgs["devicetype"] = i8nNames
 	return c.Render()
+}
+
+func (c Main) CreateDev() revel.Result {
+
+	oid, _ := strconv.Atoi(c.getCurrentUser())
+	usr := dao.GetUserWithID(oid)
+	if usr == nil {
+		c.Log.Info("creating users")
+		return nil
+	}
+	usr.Devices = []dao.Device{}
+
+	for i := 0; i < 10; i++ {
+		d := dao.Device{
+			Name:        "Schalter",
+			Description: "Schalter im FLur",
+			Producer:    "WernerSchneiderNET",
+			DeviceType:  2,
+		}
+		usr.Devices = append(usr.Devices, d)
+	}
+	dao.SaveUser(usr)
+	return c.Redirect(routes.Main.Dashboard())
 }
 
 func getSelList(c Main, idprefix string, count int) []string {
@@ -272,7 +299,7 @@ func initGoogleOauth2() {
 	json.Unmarshal(file, &c)
 
 	conf = &oauth2.Config{
-		ClientID:     "my-client",
+		ClientID:     c.Web.ClientID,
 		ClientSecret: c.Web.ClientSecret,
 		RedirectURL:  "http://localhost:9000/main/OAuth2CallBackGoogle",
 		Scopes: []string{
@@ -340,4 +367,159 @@ func (c Main) OAuth2CallBackGoogle() revel.Result {
 
 	return c.Redirect(routes.Main.Dashboard())
 
+}
+
+type DeviceCommand struct {
+	Device    string
+	Connected bool
+	Command   string
+	State     string
+}
+
+type StateTopic struct {
+	input    chan string
+	consumer [](chan string)
+}
+
+var topics = make(map[string]*StateTopic)
+
+func register(user string) (chan string, chan string) {
+	if _, ok := topics[user]; !ok {
+		// we create a new StateTopic
+		topic := StateTopic{
+			input:    make(chan string),
+			consumer: [](chan string){},
+		}
+		topics[user] = &topic
+		// and start a per user TopicHandler
+		go topicHandler(&topic)
+	}
+	usertopic := topics[user]
+	consumer := make(chan string)
+	usertopic.consumer = append(usertopic.consumer, consumer)
+	return usertopic.input, consumer
+}
+
+func unregister(user string, consumer chan string) {
+	revel.AppLog.Infof("Unregister Consumer %v for user %s -> %v", consumer, user, topics[user])
+	usertopic := topics[user]
+
+	for i, c := range usertopic.consumer {
+		//TODO: check if equals is correct
+		if c == consumer {
+			// close consume and remove from list
+			c <- "QUIT"
+			close(c)
+			usertopic.consumer = append(usertopic.consumer[:i], usertopic.consumer[i+1:]...)
+			revel.AppLog.Infof("we found the consumer and close it List: %v", usertopic.consumer)
+		}
+	}
+
+	// if this was the last consumer
+	if len(usertopic.consumer) == 0 {
+		// we can close the usertopic
+		usertopic.input <- "QUIT"
+		close(usertopic.input)
+		delete(topics, user)
+	}
+	revel.AppLog.Infof("Unregister ready %v for user %s -> %v", consumer, user, topics[user])
+}
+
+func topicHandler(stateTopic *StateTopic) {
+	go func() {
+		for {
+			msg := <-stateTopic.input
+			revel.AppLog.Info("we got msg in topicHandler: " + msg)
+			if msg == "QUIT" {
+				revel.AppLog.Info("we leave Topic-Handler")
+				break
+			}
+			// send to every consumer
+			for _, consumer := range stateTopic.consumer {
+				revel.AppLog.Infof("Sending to consumer %+v", consumer)
+				consumer <- msg
+				revel.AppLog.Infof("sent", consumer)
+			}
+		}
+		revel.AppLog.Info("Leaving Topic Handler")
+	}()
+}
+
+func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
+	c.Log.Infof("someone called a Websocket for ")
+
+	usertopic, consumer := register(c.getCurrentUser())
+
+	//internal Receiver from StateTopic
+	go func() {
+		for {
+			c.Log.Info("we are the internal consumer and wait for a msg")
+			msg := <-consumer
+			// after here, it is possible that WebSocketController is disabled
+			revel.AppLog.Info("internal consumer got a msg: " + msg)
+			if msg == "QUIT" {
+				revel.AppLog.Info("Quiting Consumer")
+				break
+			}
+
+			// send to Websocket
+			var devState = DeviceCommand{}
+			json.Unmarshal([]byte(msg), &devState)
+			err := ws.MessageSendJSON(&devState)
+
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	//external Receiver from Websocket
+	for {
+		var msg string
+		err := ws.MessageReceiveJSON(&msg)
+		if err != nil {
+			c.Log.Errorf("we got a error %v", err)
+			break
+		}
+		c.Log.Infof("We got a message from Socket %s", msg)
+
+		var incoming DeviceCommand
+		json.Unmarshal([]byte(msg), &incoming)
+
+		dev := dao.FindDeviceByID(c.getCurrentUser(), incoming.Device)
+		switch incoming.Command {
+		case "SETSTATE":
+			dev.State = incoming.State
+			dao.SaveDevice(dev)
+			incoming.Command = "STATEUPDATE"
+			incoming.Connected = dev.Connected
+
+			j, _ := json.Marshal(&incoming)
+
+			// send msg internally
+			c.Log.Info("We send msg internally")
+			usertopic <- string(j)
+			c.Log.Info("sent")
+
+		case "GETSTATE":
+			incoming.Command = "STATERESPONSE"
+			incoming.Connected = dev.Connected
+			incoming.State = dev.State
+			err := ws.MessageSendJSON(&incoming)
+			if err != nil {
+				goto EXITLOOP
+			}
+
+		case "CONNECT":
+
+		case "DISCONNECT":
+
+		}
+
+	}
+EXITLOOP:
+
+	unregister(c.getCurrentUser(), consumer)
+	c.Log.Info("we close the Websocket :(")
+	return nil
 }

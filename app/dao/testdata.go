@@ -12,12 +12,16 @@ func GetTestDevices() *[]Device {
 			Description: "Licht Küche unter der Theke",
 			Producer:    "Schneidernet",
 			DeviceType:  alexa.DeviceLight.ID(),
+			State:       "ON",
+			Connected:   true,
 		},
 		Device{
 			Name:        "Temperatur Sensor",
 			Description: "Esszimmer",
 			Producer:    "Schneidernet",
 			DeviceType:  alexa.DeviceTemperatureSensor.ID(),
+			State:       "OFF",
+			Connected:   false,
 		},
 	}
 }

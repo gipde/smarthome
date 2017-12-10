@@ -24,31 +24,36 @@ func (t *AppTest) TestThatIndexPageWorks() {
 }
 
 func (t *AppTest) TestLogin() {
-	t.PostCustom("http://localhost:8080/main/login",
-		"application/x-www-form-urlencoded", strings.NewReader("username=werner&password=starten")).Send()
+	t.PostCustom("http://localhost:9000/main/login",
+		"application/x-www-form-urlencoded", strings.NewReader("username=unknown&password=secret")).Send()
 
-	//revel.AppLog.Info("%#v", string(t.ResponseBody))
+	t.AssertContains("User unbekannt")
+}
+func (t *AppTest) TestLogin2() {
+	t.PostCustom("http://localhost:9000/main/login",
+		"application/x-www-form-urlencoded", strings.NewReader("username=admin&password=admin")).Send()
+
 	t.AssertNotContains("login-submit")
 	t.AssertNotContains("Password false")
 	t.AssertNotContains("Not Found")
-	t.AssertContains("werner")
+	t.AssertContains("admin")
 }
 
 func (t *AppTest) TestOAuth2() {
 
 	/*
-	Ablauf
-	1. Die Clientwebap ruft den Resource-Server  mit clientid  usw. auf
-		(LOGIN Seite -> AuthorizeHandlerFunc!!!)
-	2. der resource-server authentifiziert den user
-		- im Schritt 1 erfolgt ein Redirect da der User noch nicht eingeloggt ist.
-		- user muss Authorisierung bestätigen
-	3. der resource-server sendet einen redirect an die in 1 übergebene url hier enthalten ist der
-	   authorization code (z.B. http://localhost:9094/oauth2?code=4BFSDCFJP6SEIKAGE6ZSXA&state=xyz)
-	4. der autorization code wird durch einen access token getauscht
-	   hierbei wird clientid, clientsecret, granttype
-	5. der Server antwortet mit access-token
-	6. die cleintwebap kann mit dem access-token auf resourcen zugreifen
+		Ablauf
+		1. Die Clientwebap ruft den Resource-Server  mit clientid  usw. auf
+			(LOGIN Seite -> AuthorizeHandlerFunc!!!)
+		2. der resource-server authentifiziert den user
+			- im Schritt 1 erfolgt ein Redirect da der User noch nicht eingeloggt ist.
+			- user muss Authorisierung bestätigen
+		3. der resource-server sendet einen redirect an die in 1 übergebene url hier enthalten ist der
+		   authorization code (z.B. http://localhost:9094/oauth2?code=4BFSDCFJP6SEIKAGE6ZSXA&state=xyz)
+		4. der autorization code wird durch einen access token getauscht
+		   hierbei wird clientid, clientsecret, granttype
+		5. der Server antwortet mit access-token
+		6. die cleintwebap kann mit dem access-token auf resourcen zugreifen
 	*/
 
 	// muss mit der Config am Server übereinstimmen
@@ -60,8 +65,8 @@ func (t *AppTest) TestOAuth2() {
 			"devices",
 		},
 		Endpoint: oauth2.Endpoint{
-			TokenURL: "http://localhost:8080/oauth2/token",
-			AuthURL:  "http://localhost:8080/oauth2/auth",
+			TokenURL: "http://localhost:9000/oauth2/token",
+			AuthURL:  "http://localhost:9000/oauth2/auth",
 		},
 	}
 
@@ -80,7 +85,8 @@ func (t *AppTest) TestOAuth2() {
 	t.AssertContains("login-submit")
 
 	// 2. Dann wird ein Credential eingegeben und erneut gegen oauth2/auth geschickt
-	t.PostCustom("http://localhost:8080/main/login", "application/x-www-form-urlencoded", strings.NewReader("client_id=my-client&redirect_uri=http%3A%2F%2Flocalhost%3A3846%2Fcallback&response_type=code&scope=devices&state=some-random-state-foobar&nonce=some-random-nonce&username=werner&password=starten")).Send()
+	t.PostCustom("http://localhost:9000/main/login", "application/x-www-form-urlencoded",
+		strings.NewReader("client_id=my-client&redirect_uri=http%3A%2F%2Flocalhost%3A3846%2Fcallback&response_type=code&scope=devices&state=some-random-state-foobar&nonce=some-random-nonce&username=admin&password=admin")).Send()
 
 	// Ausschalten, dass Redirects nicht mehr weiterverfolgt werden
 	t.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {

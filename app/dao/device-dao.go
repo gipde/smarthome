@@ -33,6 +33,10 @@ func FindDeviceByID(user, id string) *Device {
 	return &device
 }
 
+func SaveDevice(dev *Device) {
+	Db.Save(dev)
+}
+
 func getAllDevicesIntern(user string, db *gorm.DB) *[]Device {
 	var devices []Device
 	db.Where("user_id = ?", user).Find(&devices)

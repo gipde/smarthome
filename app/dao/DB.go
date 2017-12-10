@@ -24,6 +24,8 @@ type Device struct {
 	Description string
 	Producer    string
 	DeviceType  int
+	State       string // eg a json fragment
+	Connected   bool
 }
 
 type OauthToken struct {
@@ -49,8 +51,9 @@ func InitDB() {
 		&Device{},
 	)
 
-	user := User{Name: "Werner Schneider", UserID: "werner"}
-	user.Password, _ = bcrypt.GenerateFromPassword([]byte("starten"), bcrypt.DefaultCost)
+	adminuser, _ := revel.Config.String("user.admin")
+	user := User{Name: adminuser, UserID: adminuser}
+	user.Password, _ = bcrypt.GenerateFromPassword([]byte(adminuser), bcrypt.DefaultCost)
 	Db.Create(&user)
 	user.Devices = *GetTestDevices()
 	Db.Save(&user)

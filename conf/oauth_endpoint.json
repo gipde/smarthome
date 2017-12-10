@@ -1,0 +1,27 @@
+{
+    "amzn1.ask.skill.0cf22317-49b7-49d2-b053-9fd331fa8ffc": {
+        "id": "amzn1.ask.skill.0cf22317-49b7-49d2-b053-9fd331fa8ffc",
+        "client_secret": "JDJhJDEwJEl4TWRJNmQuTElSWlBwU2ZFd05vZXU0clkzRmhEUkVzeEZKWGlrY2dkUlJBU3R4VWxzdUVP",
+        "redirect_uris": [
+            "https://layla.amazon.com/api/skill/link/MDPHWV94UTOJJ",
+            "https://alexa.amazon.co.jp/api/skill/link/MDPHWV94UTOJJ",
+            "https://pitangui.amazon.com/api/skill/link/MDPHWV94UTOJJ"
+        ],
+        "grant_types": [
+            "implicit",
+            "refresh_token",
+            "authorization_code",
+            "password",
+            "client_credentials"
+        ],
+        "response_types": [
+            "id_token",
+            "code",
+            "token"
+        ],
+        "scopes": [
+            "devices"
+        ],
+        "public": false
+    }
+}

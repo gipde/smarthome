@@ -1,42 +1,21 @@
 package app
 
 import (
+	"encoding/json"
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/compose"
 	"github.com/pkg/errors"
 	"github.com/revel/revel"
 	"golang.org/x/net/context"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 )
 
 var (
 	// Clients which will be allowed to connect to our Oauth2 Service
-	clients = map[string]*fosite.DefaultClient{
-		"my-client": {
-			ID: "my-client",
-			// = "foobar"
-			Secret:        []byte(`$2a$10$IxMdI6d.LIRZPpSfEwNoeu4rY3FhDREsxFJXikcgdRRAStxUlsuEO`),
-			RedirectURIs:  []string{"http://localhost:3846/callback"},
-			ResponseTypes: []string{"id_token", "code", "token"},
-			GrantTypes:    []string{"implicit", "refresh_token", "authorization_code", "password", "client_credentials"},
-			Scopes:        []string{"devices"},
-		},
-
-		"amzn1.ask.skill.0cf22317-49b7-49d2-b053-9fd331fa8ffc": {
-			ID: "amzn1.ask.skill.0cf22317-49b7-49d2-b053-9fd331fa8ffc",
-			// = "foobar"
-			Secret: []byte(`$2a$10$IxMdI6d.LIRZPpSfEwNoeu4rY3FhDREsxFJXikcgdRRAStxUlsuEO`),
-			RedirectURIs: []string{
-				"https://layla.amazon.com/api/skill/link/MDPHWV94UTOJJ",
-				"https://alexa.amazon.co.jp/api/skill/link/MDPHWV94UTOJJ",
-				"https://pitangui.amazon.com/api/skill/link/MDPHWV94UTOJJ",
-			},
-			ResponseTypes: []string{"id_token", "code", "token"},
-			GrantTypes:    []string{"implicit", "refresh_token", "authorization_code", "password", "client_credentials"},
-			Scopes:        []string{"devices"},
-		},
-	}
+	clients map[string]*fosite.DefaultClient
 
 	// die dürfen nur für kurze zeit verfügbar sein --> cleaner
 	// ggf. über die Session abgefackelt -> es kommt ein Delete
@@ -78,6 +57,24 @@ var (
 	)
 )
 
+func init() {
+	revel.OnAppStart(initOauth2)
+}
+
+func initOauth2() {
+	var endpoint string
+	endpoint, ok := revel.Config.String("oauth.endpoints")
+	if !ok {
+		os.Exit(1)
+	}
+	file, err := ioutil.ReadFile(revel.BasePath + "/" + endpoint)
+	if err != nil {
+		revel.AppLog.Errorf("File error: %v\n", err)
+		os.Exit(1)
+	}
+	json.Unmarshal(file, &clients)
+}
+
 func newSession(user string) *fosite.DefaultSession {
 	return &fosite.DefaultSession{
 		ExpiresAt: map[fosite.TokenType]time.Time{
@@ -118,7 +115,7 @@ func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 		"none=" + req.Form.Get("none")
 
 	// No Valid-Session -> Redirect to Resource-Server
-	http.Redirect(rw, req, "http://localhost:8080/main/oauth?"+pars, 302)
+	http.Redirect(rw, req, "http://localhost:9000/main/oauth?"+pars, 302)
 }
 
 func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, rw http.ResponseWriter, user string) {

@@ -108,3 +108,22 @@
         margin-top: 8px;
     }
 }
+
+.circle {
+    height: 65px;
+    width: 65px;
+    border-radius: 50%;
+    border: 2px solid red;
+    line-height: 65px;
+    text-align: center;
+    background-color: rgb(255, 255, 255);
+    margin: auto;
+}
+
+.switchedOn {
+    background-color: rgb(170, 170, 170);
+}
+
+.connected {
+    border: 2px solid green;
+}

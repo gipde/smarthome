@@ -42,7 +42,6 @@ func init() {
 
 	// revel.OnAppStart(FillCache)
 	revel.AppLog.Info("Initializing Ready")
-	//revel.AppLog.Info("Current Engin: " + revel.CurrentEngine.Name())
 
 }
 
@@ -63,14 +62,10 @@ func ExampleStartupScript() {
 
 func markForever() {
 	for {
-		revel.AppLog.Info("--MARK--")
+		revel.AppLog.Infof("--MARK-- version: %s build: %s ", AppVersion, BuildTime)
 		time.Sleep(30 * time.Second)
 	}
 }
-
-// func myHandler(w http.ResponseWriter, req *http.Request) {
-// 	fmt.Fprintf(w, "Welcome to my Handler!")
-// }
 
 func installHandlers() {
 	revel.AddInitEventHandler(func(event int, _ interface{}) (r int) {
