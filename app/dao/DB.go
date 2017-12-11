@@ -40,13 +40,17 @@ func InitDB() {
 
 	driver, _ := revel.Config.String("db.driver")
 	connection, _ := revel.Config.String("db.connection")
-	DbInt, err := gorm.Open(driver, connection)
+	dbInt, err := gorm.Open(driver, connection)
 
 	if err != nil {
 		panic("failed to connect database")
 	}
 
-	Db = DbInt.Debug().AutoMigrate(
+	dbInt2 := dbInt
+	if r, _ := revel.Config.Bool("db.debug"); r {
+		dbInt2 = dbInt.Debug()
+	}
+	Db = dbInt2.AutoMigrate(
 		&User{},
 		&Device{},
 	)
