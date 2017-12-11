@@ -23,7 +23,7 @@
 
         <script>
             // Create a socket
-            var socket = new WebSocket('ws://' + window.location.host + '{{ .contextRoot}}/Main/DeviceFeed');
+            var socket = new WebSocket('{{.websocketHost}}{{.contextRoot}}/Main/DeviceFeed');
 
             var callbackhandler = function() {
                 $(".circle").click(function() {

@@ -61,6 +61,7 @@ func checkUser(c *revel.Controller) revel.Result {
 
 	// Set app.ContextRoot if we ar behind a rewritng Proxy
 	c.ViewArgs["contextRoot"] = app.ContextRoot
+	c.ViewArgs["websocketHost"] = app.WebSocketHost
 
 	// diese Seiten benötigen kein Login
 	if c.Action == "Main.Index" ||
