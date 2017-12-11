@@ -124,7 +124,7 @@
                     if (socket.readyState != 1) {
                         connectionError.html("error connecting websocket");
                     }
-                }, 100); // ms
+                }, 1000); // ms
             });
 
             $(window).unload(function() {
