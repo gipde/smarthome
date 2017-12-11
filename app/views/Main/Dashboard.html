@@ -2,7 +2,7 @@
 
 <div class="container">
     <div class="page-header">
-        <h3><span></span> Geräteübersicht <a href="/main/createdev">create</a> </h3>
+        <h3><span></span> Geräteübersicht <a href="{{.contextRoot}}/main/createdev">create</a> </h3>
     </div>
     <div id="connection-error"> </div>
     <div class="container">
@@ -23,7 +23,40 @@
 
         <script>
             // Create a socket
-            var socket = new WebSocket('ws://' + window.location.host + '/Main/DeviceFeed');
+            var socket = new WebSocket('ws://' + window.location.host + '{{ .contextRoot}}/Main/DeviceFeed');
+
+            var callbackhandler = function() {
+                $(".circle").click(function() {
+                    currentState = $(this).text()
+                    var newstate
+                    switch (currentState) {
+                        case "ON":
+                            newstate = "OFF"
+                            break;
+                        case "OFF":
+                            newstate = "ON"
+                            break;
+                        case "":
+                            newstate = "ON"
+                            break;
+                    }
+                    transmit = {
+                        "Command": "SETSTATE",
+                        "Device": $(this)[0].id,
+                        "State": newstate
+                    }
+                    socket.send(JSON.stringify(transmit))
+                });
+
+                // initially, we fetch the state of the device
+                $(".circle").each(function(index) {
+                    socket.send(JSON.stringify({
+                        "Command": "GETSTATE",
+                        "Device": $(this)[0].id
+                    }))
+                });
+            };
+
             $(document).ready(function() {
 
                 // Message received on the socket
@@ -79,48 +112,19 @@
                     }
                 }
 
+                if (socket.readyState != 1)
+                    socket.onopen = callbackhandler;
+                else
+                    callbackhandler()
+
                 // wait until socket is connected
                 // TODO: Nice UI State to display state of Websocket
                 connectionError = $("#connection-error")
                 setTimeout(() => {
-                    if (socket.readyState !== 1) {
+                    if (socket.readyState != 1) {
                         connectionError.html("error connecting websocket");
                     }
                 }, 100); // ms
-
-                socket.onopen = function() {
-
-                    $(".circle").click(function() {
-                        currentState = $(this).text()
-                        var newstate
-                        switch (currentState) {
-                            case "ON":
-                                newstate = "OFF"
-                                break;
-                            case "OFF":
-                                newstate = "ON"
-                                break;
-                            case "":
-                                newstate = "ON"
-                                break;
-                        }
-                        transmit = {
-                            "Command": "SETSTATE",
-                            "Device": $(this)[0].id,
-                            "State": newstate
-                        }
-                        socket.send(JSON.stringify(transmit))
-                    });
-
-                    // initially, we fetch the state of the device
-                    $(".circle").each(function(index) {
-                        socket.send(JSON.stringify({
-                            "Command": "GETSTATE",
-                            "Device": $(this)[0].id
-                        }))
-                    })
-                }
-
             });
 
             $(window).unload(function() {

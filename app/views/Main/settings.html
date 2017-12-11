@@ -7,7 +7,7 @@
 
     <div class="container">
         <h2>Einstellungen</h2>
-        <form action="/main/updateuser" method="post">
+        <form action="{{.contextRoot}}/main/updateuser" method="post">
             <div class="form-group">
                 <label for="name">Name:</label>
                 <input type="name" class="form-control" id="name" value="{{ .muser.Name }}" name="user.Name">
@@ -20,5 +20,5 @@
         <br>
     </p>
 
-    <a href="/main/listtokens" class="btn btn-primary" role="button">List Tokens</a>
-    <a href="/main/listtokens" class="btn btn-primary" role="button">List Tokens</a> {{template "Main/mfooter.html" .}}
+    <a href="{{.contextRoot}}/main/listtokens" class="btn btn-primary" role="button">List Tokens</a>
+    <a href="{{.contextRoot}}/main/listtokens" class="btn btn-primary" role="button">List Tokens</a> {{template "Main/mfooter.html" .}}

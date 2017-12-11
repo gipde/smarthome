@@ -6,6 +6,7 @@ import (
 	"golang.org/x/oauth2"
 	"net/http"
 	"net/url"
+	"schneidernet/smarthome/app"
 	"strings"
 )
 
@@ -24,13 +25,13 @@ func (t *AppTest) TestThatIndexPageWorks() {
 }
 
 func (t *AppTest) TestLogin() {
-	t.PostCustom("http://localhost:9000/main/login",
+	t.PostCustom(app.PublicHost+app.ContextRoot+"/main/login",
 		"application/x-www-form-urlencoded", strings.NewReader("username=unknown&password=secret")).Send()
 
 	t.AssertContains("User unbekannt")
 }
 func (t *AppTest) TestLogin2() {
-	t.PostCustom("http://localhost:9000/main/login",
+	t.PostCustom(app.PublicHost+app.ContextRoot+"/main/login",
 		"application/x-www-form-urlencoded", strings.NewReader("username=admin&password=admin")).Send()
 
 	t.AssertNotContains("login-submit")
@@ -60,13 +61,13 @@ func (t *AppTest) TestOAuth2() {
 	conf := &oauth2.Config{
 		ClientID:     "my-client",
 		ClientSecret: "foobar",
-		RedirectURL:  "http://localhost:3846/callback",
+		RedirectURL:  app.PublicHost + app.ContextRoot + "/callback",
 		Scopes: []string{
 			"devices",
 		},
 		Endpoint: oauth2.Endpoint{
-			TokenURL: "http://localhost:9000/oauth2/token",
-			AuthURL:  "http://localhost:9000/oauth2/auth",
+			TokenURL: app.PublicHost + app.ContextRoot + "/oauth2/token",
+			AuthURL:  app.PublicHost + app.ContextRoot + "/oauth2/auth",
 		},
 	}
 
@@ -85,7 +86,7 @@ func (t *AppTest) TestOAuth2() {
 	t.AssertContains("login-submit")
 
 	// 2. Dann wird ein Credential eingegeben und erneut gegen oauth2/auth geschickt
-	t.PostCustom("http://localhost:9000/main/login", "application/x-www-form-urlencoded",
+	t.PostCustom(app.PublicHost+app.ContextRoot+"/main/login", "application/x-www-form-urlencoded",
 		strings.NewReader("client_id=my-client&redirect_uri=http%3A%2F%2Flocalhost%3A3846%2Fcallback&response_type=code&scope=devices&state=some-random-state-foobar&nonce=some-random-nonce&username=admin&password=admin")).Send()
 
 	// Ausschalten, dass Redirects nicht mehr weiterverfolgt werden

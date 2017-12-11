@@ -115,7 +115,7 @@ func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 		"none=" + req.Form.Get("none")
 
 	// No Valid-Session -> Redirect to Resource-Server
-	http.Redirect(rw, req, "http://localhost:9000/main/oauth?"+pars, 302)
+	http.Redirect(rw, req, ContextRoot+"main/oauth?"+pars, 302)
 }
 
 func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, rw http.ResponseWriter, user string) {

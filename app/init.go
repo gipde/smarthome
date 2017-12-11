@@ -13,6 +13,11 @@ var (
 
 	// BuildTime revel app build-time (ldflags)
 	BuildTime string
+
+	// App Pathes
+	ContextRoot   string
+	WebSocketHost string
+	PublicHost    string
 )
 
 func init() {
@@ -39,6 +44,7 @@ func init() {
 	revel.OnAppStart(installHandlers)
 	revel.OnAppStart(ExampleStartupScript)
 	revel.OnAppStart(dao.InitDB)
+	revel.OnAppStart(setAppPathes)
 
 	// revel.OnAppStart(FillCache)
 	revel.AppLog.Info("Initializing Ready")
@@ -65,6 +71,12 @@ func markForever() {
 		revel.AppLog.Infof("--MARK-- version: %s build: %s ", AppVersion, BuildTime)
 		time.Sleep(30 * time.Second)
 	}
+}
+
+func setAppPathes() {
+	ContextRoot, _ = revel.Config.String("site.contextroot")
+	WebSocketHost, _ = revel.Config.String("site.websocket")
+	PublicHost, _ = revel.Config.String("site.publicurl")
 }
 
 func installHandlers() {

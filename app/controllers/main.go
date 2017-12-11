@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
 	"schneidernet/smarthome/app/models"
 	"schneidernet/smarthome/app/routes"
@@ -52,11 +53,14 @@ func (c Main) UpdateUser(user dao.User) revel.Result {
 	dbUser.Name = user.Name
 	c.Log.Infof("Speichere User: %+v", dbUser)
 	dao.SaveUser(dbUser)
-	return c.Redirect(routes.Main.Dashboard())
+	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 }
 
 func checkUser(c *revel.Controller) revel.Result {
 	c.Log.Infof("Check User: %+v in %+v", c.Session, c.Action)
+
+	// Set app.ContextRoot if we ar behind a rewritng Proxy
+	c.ViewArgs["contextRoot"] = app.ContextRoot
 
 	// diese Seiten benötigen kein Login
 	if c.Action == "Main.Index" ||
@@ -108,7 +112,7 @@ func checkUser(c *revel.Controller) revel.Result {
 			Expires: time.Now().Add(time.Duration(5) * time.Minute),
 		}
 		c.SetCookie(newCookie)
-		return c.Redirect(routes.Main.Index())
+		return c.Redirect(app.ContextRoot + routes.Main.Index())
 	}
 
 	c.ViewArgs["user"] = c.Session["userid"]
@@ -126,7 +130,7 @@ func (c Main) Index() revel.Result {
 	if c.Flash.Data["oauth"] == "true" {
 		// wenn bereits eine gültige Sitzung vorhanden ist, muss nur noch ein Bestätigungsdialog angezeigt werden
 
-		c.ViewArgs["action"] = "/oauth2/auth"
+		c.ViewArgs["action"] = app.ContextRoot + "/oauth2/auth"
 
 		acc := map[string]string{}
 		f := func(keys []string) {
@@ -142,7 +146,7 @@ func (c Main) Index() revel.Result {
 
 	// wenn gültie Session vorhanen, dann gleich weiter zum Dashboard
 	if _, ok := c.Session["useroid"]; ok {
-		return c.Redirect(routes.Main.Dashboard())
+		return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 	}
 
 	//Google Oauth2
@@ -151,7 +155,7 @@ func (c Main) Index() revel.Result {
 	c.Session["state"] = state
 	c.ViewArgs["google_url"] = conf.AuthCodeURL(state)
 
-	c.ViewArgs["action"] = "/main/login"
+	c.ViewArgs["action"] = app.ContextRoot + "/main/login"
 	return c.Render()
 }
 
@@ -176,7 +180,7 @@ func CheckCredentials(username, password string) error {
 // REST Api
 func (c Main) Login(username, password string, remember bool) revel.Result {
 
-	target := routes.Main.Dashboard()
+	target := app.ContextRoot + routes.Main.Dashboard()
 
 	if v, err := c.Request.Cookie(REVELREDIRECT); err == nil {
 		target = v.GetValue()
@@ -192,13 +196,13 @@ func (c Main) Login(username, password string, remember bool) revel.Result {
 	dbUsr := dao.GetUser(username)
 	if dbUsr == nil {
 		c.Flash.Error("User unbekannt")
-		return c.Redirect(routes.Main.Index())
+		return c.Redirect(app.ContextRoot + routes.Main.Index())
 	}
 
 	err := bcrypt.CompareHashAndPassword(dbUsr.Password, []byte(password))
 	if err != nil {
 		c.Flash.Error("Password false")
-		return c.Redirect(routes.Main.Index())
+		return c.Redirect(app.ContextRoot + routes.Main.Index())
 	}
 	c.setUserSession(dbUsr)
 	c.Log.Info("we redirect to " + target)
@@ -214,14 +218,14 @@ func (c Main) setUserSession(dbUsr *dao.User) {
 func (c Main) Logout() revel.Result {
 	delete(c.Session, "useroid")
 	delete(c.Session, "userid")
-	return c.Redirect(routes.Main.Index())
+	return c.Redirect(app.ContextRoot + routes.Main.Index())
 }
 
 func (c Main) CreateDevice(device dao.Device) revel.Result {
 	oid, _ := strconv.Atoi(c.getCurrentUser())
 	device.UserID = oid
 	dao.CreateDevice(&device)
-	return c.Redirect(routes.Main.Dashboard())
+	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 }
 
 func (c Main) DeviceList() revel.Result {
@@ -241,7 +245,7 @@ func (c Main) DeleteDevice(id string) revel.Result {
 
 	c.Log.Info(fmt.Sprintf("found device %v ", device))
 	dao.DeleteDevice(device)
-	return c.Redirect(routes.Main.DeviceList())
+	return c.Redirect(app.ContextRoot + routes.Main.DeviceList())
 }
 
 func (c Main) DeviceNew() revel.Result {
@@ -273,7 +277,7 @@ func (c Main) CreateDev() revel.Result {
 		usr.Devices = append(usr.Devices, d)
 	}
 	dao.SaveUser(usr)
-	return c.Redirect(routes.Main.Dashboard())
+	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 }
 
 func getSelList(c Main, idprefix string, count int) []string {
@@ -322,7 +326,7 @@ func initGoogleOauth2() {
 	conf = &oauth2.Config{
 		ClientID:     c.Web.ClientID,
 		ClientSecret: c.Web.ClientSecret,
-		RedirectURL:  "http://localhost:9000/main/OAuth2CallBackGoogle",
+		RedirectURL:  app.PublicHost + app.ContextRoot + "/main/OAuth2CallBackGoogle",
 		Scopes: []string{
 			"https://www.googleapis.com/auth/userinfo.email",
 			// You have to select your own scope from here ->
@@ -357,7 +361,7 @@ func (c Main) OAuth2CallBackGoogle() revel.Result {
 	// if we have no GoogleAccess-Token we have to fetch one
 	if _, ok := c.Session["google"]; !ok {
 		c.Flash.Error("No Google Token Available")
-		return c.Redirect(routes.Main.Index())
+		return c.Redirect(app.ContextRoot + routes.Main.Index())
 	}
 	c.Log.Info("We use our old AccessToken")
 	// we use our previously fetched token
@@ -386,7 +390,7 @@ func (c Main) OAuth2CallBackGoogle() revel.Result {
 	c.setUserSession(dbUsr)
 	c.Log.Info("Userinfo Mail: ", userinfo.Email)
 
-	return c.Redirect(routes.Main.Dashboard())
+	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 
 }
 
