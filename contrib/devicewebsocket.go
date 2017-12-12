@@ -48,7 +48,7 @@ func basicAuth(username, password string) string {
 
 func main() {
 
-	config, _ := websocket.NewConfig("ws://localhost:8080/Main/DeviceFeed", "http://localhost/")
+	config, _ := websocket.NewConfig("wss://2e1512f0-d590-4eed-bb41-9ad3abd03edf.pub.cloud.scaleway.com/sh/Main/DeviceFeed", "http://localhost/")
 	config.Header.Add("Authorization", "Basic "+basicAuth("admin", "admin"))
 	ws, err := websocket.DialConfig(config)
 	if err != nil {

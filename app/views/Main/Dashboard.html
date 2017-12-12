@@ -14,7 +14,7 @@
                         device-{{.ID}}<br>{{$value.Name}}
                     </div>
                     <div class="panel-body">
-                        <div id="device-{{.ID}}" class="circle center">{{.State}}</div>
+                        <div id="device-{{.ID}}" class="{{if eq .State `ON`}}switchedOn {{end}}{{if eq .Connected true}}connected {{end}}circle center">{{.State}}</div>
                     </div>
                 </div>
             </div>

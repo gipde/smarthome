@@ -507,10 +507,13 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 			c.Log.Errorf("we got a error %v", err)
 			break
 		}
-		c.Log.Infof("We got a message from Socket %s", msg)
 
 		var incoming DeviceCommand
-		json.Unmarshal([]byte(msg), &incoming)
+		err = json.Unmarshal([]byte(msg), &incoming)
+		if err != nil {
+			c.Log.Errorf("Error in conversion %v", err)
+		}
+		c.Log.Infof("We got a message from Socket %s it's about device -> %+v", []byte(msg), incoming)
 
 		dev := dao.FindDeviceByID(c.getCurrentUser(), incoming.Device)
 		switch incoming.Command {
