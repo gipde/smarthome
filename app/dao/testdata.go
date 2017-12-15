@@ -17,11 +17,27 @@ func GetTestDevices() *[]Device {
 		},
 		Device{
 			Name:        "Temperatur Sensor",
-			Description: "Esszimmer",
+			Description: "Heizung",
 			Producer:    "Schneidernet",
 			DeviceType:  alexa.DeviceTemperatureSensor.ID(),
-			State:       "OFF",
+			State:       "35.5",
 			Connected:   false,
+		},
+		Device{
+			Name:        "TV",
+			Description: "Heizung",
+			Producer:    "Schneidernet",
+			DeviceType:  alexa.DeviceSwitch.ID(),
+			State:       "ON",
+			Connected:   false,
+		},
+		Device{
+			Name:        "Steckdose",
+			Description: "Esszimmer",
+			Producer:    "Schneidernet",
+			DeviceType:  alexa.DeviceSocket.ID(),
+			State:       "OFF",
+			Connected:   true,
 		},
 	}
 }

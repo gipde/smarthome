@@ -396,10 +396,11 @@ func (c Main) OAuth2CallBackGoogle() revel.Result {
 }
 
 type DeviceCommand struct {
-	Device    string
-	Connected bool
-	Command   string
-	State     string
+	Device     string
+	Connected  bool
+	Command    string
+	State      string
+	DeviceType int
 }
 
 type StateTopic struct {
@@ -471,6 +472,12 @@ func topicHandler(stateTopic *StateTopic) {
 	}()
 }
 
+/*
+Das Websocket empfängt Nachrichten von den Clients und sendet wieder
+welche zurück.
+Das Rendering ist grundsätzlich Aufgabe des Clients selbst
+
+*/
 func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	c.Log.Infof("someone called a Websocket for ")
 
@@ -516,24 +523,59 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		c.Log.Infof("We got a message from Socket %s it's about device -> %+v", []byte(msg), incoming)
 
 		dev := dao.FindDeviceByID(c.getCurrentUser(), incoming.Device)
+		c.Log.Infof("we found %+v", dev)
+
+		incoming.DeviceType = dev.DeviceType
+
 		switch incoming.Command {
-		case "SETSTATE":
-			dev.State = incoming.State
-			dao.SaveDevice(dev)
-			incoming.Command = "STATEUPDATE"
+		case "CLICK":
 			incoming.Connected = dev.Connected
+			if incoming.Connected {
+				switch alexa.DeviceType(dev.DeviceType) {
+				case alexa.DeviceLight,
+					alexa.DeviceSocket,
+					alexa.DeviceSwitch:
 
-			j, _ := json.Marshal(&incoming)
+					c.Log.Infof("we have a thing to switch %d %s", dev.DeviceType, dev.State)
+					if dev.State == "OFF" {
+						dev.State = "ON"
+					} else {
+						dev.State = "OFF"
+					}
 
-			// send msg internally
-			c.Log.Info("We send msg internally")
-			usertopic <- string(j)
-			c.Log.Info("sent")
+					// if we have to send back
+					dao.SaveDevice(dev)
+					incoming.State = dev.State
+					incoming.Command = "STATEUPDATE"
+
+					j, _ := json.Marshal(&incoming)
+
+					// send msg internally
+					c.Log.Info("We send msg internally")
+					usertopic <- string(j)
+					c.Log.Info("sent")
+
+				}
+			}
+
+		case "SETSTATE":
+			if dev.Connected {
+				dev.State = incoming.State
+				dao.SaveDevice(dev)
+				incoming.Command = "STATEUPDATE"
+				incoming.Connected = dev.Connected
+				j, _ := json.Marshal(&incoming)
+
+				// send msg internally
+				c.Log.Info("We send msg internally")
+				usertopic <- string(j)
+				c.Log.Info("sent")
+			}
 
 		case "GETSTATE":
 			incoming.Command = "STATERESPONSE"
-			incoming.Connected = dev.Connected
 			incoming.State = dev.State
+			incoming.Connected = dev.Connected
 			err := ws.MessageSendJSON(&incoming)
 			if err != nil {
 				goto EXITLOOP
@@ -561,7 +603,6 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 			c.Log.Info("We send msg internally")
 			usertopic <- string(j)
 			c.Log.Info("sent")
-
 		}
 
 	}

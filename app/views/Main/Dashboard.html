@@ -2,7 +2,7 @@
 
 <div class="container">
     <div class="page-header">
-        <h3><span></span> Geräteübersicht <a href="{{.contextRoot}}/main/createdev">create</a> </h3>
+        <h3><span></span> Geräteübersicht</h3>
     </div>
     <div id="connection-error"> </div>
     <div class="container">
@@ -11,10 +11,14 @@
             <div class="col-md-4 bordered">
                 <div class="panel panel-default center">
                     <div class="panel-heading center" style="text-align: center">
-                        device-{{.ID}}<br>{{$value.Name}}
+                        <!-- device-{{.ID}} -->
+                        <!-- <br> -->
+                        {{$value.Name}}
                     </div>
                     <div class="panel-body">
-                        <div id="device-{{.ID}}" class="{{if eq .State `ON`}}switchedOn {{end}}{{if eq .Connected true}}connected {{end}}circle center">{{.State}}</div>
+                        <!-- <div id="device-{{.ID}}" class="{{if eq .State `ON`}}switchedOn {{end}}{{if eq .Connected true}}connected {{end}}circle center"><img src="/public/img/thermo2.svg" width="25" height="25" />-25.7</div> -->
+                        <!-- <div id="device-{{.ID}}" class="{{if eq .State `ON`}}switchedOn {{end}}{{if eq .Connected true}}connected {{end}}circle center">{{.State}}</div> -->
+                        <div id="device-{{.ID}}" class="circle center"></div>
                     </div>
                 </div>
             </div>
@@ -25,30 +29,19 @@
             // Create a socket
             var socket = new WebSocket('{{.websocketHost}}{{.contextRoot}}/Main/DeviceFeed');
 
+            // send Click Command on every Click
             var callbackhandler = function() {
                 $(".circle").click(function() {
-                    currentState = $(this).text()
-                    var newstate
-                    switch (currentState) {
-                        case "ON":
-                            newstate = "OFF"
-                            break;
-                        case "OFF":
-                            newstate = "ON"
-                            break;
-                        case "":
-                            newstate = "ON"
-                            break;
-                    }
                     transmit = {
-                        "Command": "SETSTATE",
-                        "Device": $(this)[0].id,
-                        "State": newstate
+                        "Command": "CLICK",
+                        "Device": $(this)[0].id
                     }
                     socket.send(JSON.stringify(transmit))
                 });
+            };
 
-                // initially, we fetch the state of the device
+            // initially, we fetch the state of the device
+            var loadhandler = function() {
                 $(".circle").each(function(index) {
                     socket.send(JSON.stringify({
                         "Command": "GETSTATE",
@@ -64,7 +57,9 @@
                     state = JSON.parse(event.data)
                     console.log(state)
                     switch (state.Command) {
+                        case "STATEUPDATE": //fall through
                         case "STATERESPONSE":
+
                             // Text
                             $("#" + state.Device).html(state.State)
 
@@ -76,46 +71,74 @@
                                 $("#" + state.Device).removeClass("connected")
                             }
 
-                            // State Background
-                            switch (state.State) {
-                                case "ON":
-                                    $("#" + state.Device).addClass("switchedOn")
+                            switch (state.DeviceType) {
+                                case 0:
+                                    //socket
+                                    console.log("we process for a socket a " + state.State)
+                                    if (state.State == "ON") {
+                                        $("#" + state.Device).html(function() {
+                                            return '<img src="/public/img/socket_on.svg" width="30" height="30"/>'
+                                        });
+                                        $("#" + state.Device).addClass("switchedOn");
+                                    } else {
+                                        $("#" + state.Device).html(function() {
+                                            return '<img src="/public/img/socket_off.svg" width="35" height="35"/>'
+                                        });
+                                        $("#" + state.Device).removeClass("switchedOn");
+                                    }
                                     break;
-                                case "OFF":
-                                    $("#" + state.Device).removeClass("switchedOn")
+                                case 1:
+                                    //switch
+                                    console.log("we process for a socket a " + state.State)
+                                    if (state.State == "ON") {
+                                        $("#" + state.Device).html(function() {
+                                            return '<img src="/public/img/switch_on.svg" width="40" height="40"/>'
+                                        });
+                                        $("#" + state.Device).addClass("switchedOn");
+                                    } else {
+                                        $("#" + state.Device).html(function() {
+                                            return '<img src="/public/img/switch_off.svg" width="40" height="40"/>'
+                                        });
+                                        $("#" + state.Device).removeClass("switchedOn");
+                                    }
                                     break;
+                                case 2:
+                                    // bulb
+                                    if (state.State == "ON") {
+                                        $("#" + state.Device).addClass("switchedOn");
+                                        $("#" + state.Device).html(function() {
+                                            return '<img src="/public/img/bulb_on.svg" width="30" height="30"/>'
+                                        });
+                                    } else {
+                                        $("#" + state.Device).html(function() {
+                                            return '<img src="/public/img/bulb_off.svg" width="30" height="30"/>'
+                                        });
+                                        $("#" + state.Device).removeClass("switchedOn");
+                                    }
+                                    break;
+                                case 3:
+                                    // thermo
+                                    $("#" + state.Device).html(function() {
+                                        return '<img src="/public/img/thermo.svg" width="25" height="25"/>' + state.State
+                                    });
+                                    break
                             }
+
                             break;
-                        case "STATEUPDATE":
-                            // Text
-                            $("#" + state.Device).html(state.State)
 
-                            // State-Border
-                            if (state.Connected) {
-                                $("#" + state.Device).addClass("connected")
-
-                            } else {
-                                $("#" + state.Device).removeClass("connected")
-                            }
-
-                            // State Background
-                            switch (state.State) {
-                                case "ON":
-                                    $("#" + state.Device).addClass("switchedOn")
-                                    break;
-                                case "OFF":
-                                    $("#" + state.Device).removeClass("switchedOn")
-                                    break;
-                            }
-                            break;
 
                     }
                 }
 
                 if (socket.readyState != 1)
-                    socket.onopen = callbackhandler;
-                else
+                    socket.onopen = function() {
+                        callbackhandler();
+                        loadhandler();
+                    }
+                else {
                     callbackhandler()
+                    loadhandler();
+                }
 
                 // wait until socket is connected
                 // TODO: Nice UI State to display state of Websocket
@@ -125,6 +148,7 @@
                         connectionError.html("error connecting websocket");
                     }
                 }, 1000); // ms
+
             });
 
             $(window).unload(function() {
