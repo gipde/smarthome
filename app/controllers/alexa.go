@@ -69,7 +69,7 @@ type StateReport struct {
 // check Auth for axea requests
 func checkOauth2(token string) (error, string) {
 	//r := Request{}
-	user := dao.GetUser("werner")
+	user := dao.GetUser("admin")
 	return nil, strconv.Itoa(int(user.ID))
 }
 
