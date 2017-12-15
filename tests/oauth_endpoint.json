@@ -3,7 +3,7 @@
         "id": "my-client",
         "client_secret": "JDJhJDEwJEl4TWRJNmQuTElSWlBwU2ZFd05vZXU0clkzRmhEUkVzeEZKWGlrY2dkUlJBU3R4VWxzdUVP",
         "redirect_uris": [
-            "http://localhost:3846/callback"
+            "http://localhost:9000/callback"
         ],
         "grant_types": [
             "implicit",
