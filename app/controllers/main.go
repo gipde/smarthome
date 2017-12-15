@@ -120,13 +120,14 @@ func checkUser(c *revel.Controller) revel.Result {
 	if c.Session["useroid"] == "" {
 		c.Flash.Error("not logged in")
 
-		// Nach einer erfolgreichen Anmeldung wird zur eigentlichen angeforderten Seite gewechselt
+		// sorgt dafür dass wieder zur aufrufenden Seite zurückgesprungen wird
 		newCookie := &http.Cookie{
 			Name:    REVELREDIRECT,
 			Value:   c.Request.GetRequestURI(),
 			Expires: time.Now().Add(time.Duration(5) * time.Minute),
 		}
 		c.SetCookie(newCookie)
+		c.Log.Infof("not logged in, redirect to %s", app.ContextRoot+routes.Main.Index())
 		return c.Redirect(app.ContextRoot + routes.Main.Index())
 	}
 
