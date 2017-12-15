@@ -56,10 +56,12 @@ func InitDB() {
 	)
 
 	adminuser, _ := revel.Config.String("user.admin")
-	user := User{Name: adminuser, UserID: adminuser}
-	user.Password, _ = bcrypt.GenerateFromPassword([]byte(adminuser), bcrypt.DefaultCost)
-	Db.Create(&user)
-	user.Devices = *GetTestDevices()
-	Db.Save(&user)
+	if admin := GetUser(adminuser); admin == nil {
+		user := User{Name: adminuser, UserID: adminuser}
+		user.Password, _ = bcrypt.GenerateFromPassword([]byte(adminuser), bcrypt.DefaultCost)
+		Db.Create(&user)
+		user.Devices = *GetTestDevices()
+		Db.Save(&user)
+	}
 
 }
