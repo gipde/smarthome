@@ -53,6 +53,14 @@ func (c Main) UserList() revel.Result {
 	return c.Render()
 }
 
+func (c Main) UserDel(id string) revel.Result {
+	c.Log.Infof("Delete User %s", id)
+	uid, _ := strconv.Atoi(id)
+	user := dao.GetUserWithID(uid)
+	dao.DeleteUser(user)
+	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
+}
+
 func (c Main) UpdateUser(user dao.User) revel.Result {
 	oid, _ := strconv.Atoi(c.getCurrentUser())
 	dbUser := dao.GetUserWithID(oid)

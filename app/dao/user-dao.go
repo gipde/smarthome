@@ -28,3 +28,7 @@ func GetAllUsers() *[]User {
 	Db.Find(&users)
 	return &users
 }
+
+func DeleteUser(user *User) {
+	Db.Delete(&user)
+}
