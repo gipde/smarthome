@@ -123,7 +123,7 @@ func checkUser(c *revel.Controller) revel.Result {
 		// sorgt dafür dass wieder zur aufrufenden Seite zurückgesprungen wird
 		newCookie := &http.Cookie{
 			Name:    REVELREDIRECT,
-			Value:   c.Request.GetRequestURI(),
+			Value:   app.ContextRoot + c.Request.GetRequestURI(),
 			Expires: time.Now().Add(time.Duration(5) * time.Minute),
 		}
 		c.SetCookie(newCookie)
