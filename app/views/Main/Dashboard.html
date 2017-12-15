@@ -77,12 +77,12 @@
                                     console.log("we process for a socket a " + state.State)
                                     if (state.State == "ON") {
                                         $("#" + state.Device).html(function() {
-                                            return '<img src="/public/img/socket_on.svg" width="30" height="30"/>'
+                                            return '<img src="{{.contextRoot}}/public/img/socket_on.svg" width="30" height="30"/>'
                                         });
                                         $("#" + state.Device).addClass("switchedOn");
                                     } else {
                                         $("#" + state.Device).html(function() {
-                                            return '<img src="/public/img/socket_off.svg" width="35" height="35"/>'
+                                            return '<img src="{{.contextRoot}}/public/img/socket_off.svg" width="35" height="35"/>'
                                         });
                                         $("#" + state.Device).removeClass("switchedOn");
                                     }
@@ -92,12 +92,12 @@
                                     console.log("we process for a socket a " + state.State)
                                     if (state.State == "ON") {
                                         $("#" + state.Device).html(function() {
-                                            return '<img src="/public/img/switch_on.svg" width="40" height="40"/>'
+                                            return '<img src="{{.contextRoot}}/public/img/switch_on.svg" width="40" height="40"/>'
                                         });
                                         $("#" + state.Device).addClass("switchedOn");
                                     } else {
                                         $("#" + state.Device).html(function() {
-                                            return '<img src="/public/img/switch_off.svg" width="40" height="40"/>'
+                                            return '<img src="{{.contextRoot}}/public/img/switch_off.svg" width="40" height="40"/>'
                                         });
                                         $("#" + state.Device).removeClass("switchedOn");
                                     }
@@ -107,11 +107,11 @@
                                     if (state.State == "ON") {
                                         $("#" + state.Device).addClass("switchedOn");
                                         $("#" + state.Device).html(function() {
-                                            return '<img src="/public/img/bulb_on.svg" width="30" height="30"/>'
+                                            return '<img src="{{.contextRoot}}/public/img/bulb_on.svg" width="30" height="30"/>'
                                         });
                                     } else {
                                         $("#" + state.Device).html(function() {
-                                            return '<img src="/public/img/bulb_off.svg" width="30" height="30"/>'
+                                            return '<img src="{{.contextRoot}}/public/img/bulb_off.svg" width="30" height="30"/>'
                                         });
                                         $("#" + state.Device).removeClass("switchedOn");
                                     }
@@ -119,7 +119,7 @@
                                 case 3:
                                     // thermo
                                     $("#" + state.Device).html(function() {
-                                        return '<img src="/public/img/thermo.svg" width="25" height="25"/>' + state.State
+                                        return '<img src="{{.contextRoot}}/public/img/thermo.svg" width="25" height="25"/>' + state.State
                                     });
                                     break
                             }
