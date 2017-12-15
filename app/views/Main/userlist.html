@@ -1,0 +1,41 @@
+ {{template "Main/mheader.html" .}}
+
+<div class="container">
+    <div class="page-header">
+        <h3><span></span>Benutzer</h3>
+    </div>
+
+
+    <div class="container">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>BenutzerID</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <input type="text" class="form-control" placeholder="Name" aria-describedby="basic-addon1">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control" placeholder="Typ" aria-describedby="basic-addon1"> </td>
+                </tr>
+                {{range .users}}
+                <tr>
+                    <td>{{.UserID}}</td>
+                    <td>{{.Name}}</td>
+                    <td>
+                        <a href="deleteuser?id={{.ID}}">
+                            <span class="glyphicon glyphicon-remove-circle" aria-hidden="true"></span>
+                        </a>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+
+    {{template "Main/mfooter.html" .}}

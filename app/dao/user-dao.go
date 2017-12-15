@@ -22,3 +22,9 @@ func GetUserWithID(uid int) *User {
 func SaveUser(user *User) {
 	Db.Save(&user)
 }
+
+func GetAllUsers() *[]User {
+	var users []User
+	Db.Find(&users)
+	return &users
+}

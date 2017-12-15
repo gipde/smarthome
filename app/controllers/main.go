@@ -47,6 +47,12 @@ func (c Main) Settings() revel.Result {
 	return c.Render()
 }
 
+func (c Main) UserList() revel.Result {
+	users := dao.GetAllUsers()
+	c.ViewArgs["users"] = *users
+	return c.Render()
+}
+
 func (c Main) UpdateUser(user dao.User) revel.Result {
 	oid, _ := strconv.Atoi(c.getCurrentUser())
 	dbUser := dao.GetUserWithID(oid)
