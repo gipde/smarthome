@@ -19,7 +19,7 @@ type User struct {
 
 type Device struct {
 	gorm.Model
-	UserID      int
+	UserID      uint
 	Name        string
 	Description string
 	Producer    string
@@ -30,7 +30,7 @@ type Device struct {
 
 type AuthorizeEntry struct {
 	gorm.Model
-	UserID int
+	UserID uint
 	AppID  string
 }
 

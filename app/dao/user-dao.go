@@ -13,7 +13,7 @@ func GetUser(username string) *User {
 	return &dbUsr
 }
 
-func GetUserWithID(uid int) *User {
+func GetUserWithID(uid uint) *User {
 	var dbUsr User
 	Db.First(&dbUsr, "id=?", uid)
 	return &dbUsr

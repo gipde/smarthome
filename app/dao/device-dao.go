@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-func GetAllDevices(user string) *[]Device {
-	return getAllDevicesIntern(user, Db)
+func GetAllDevices(useroid uint) *[]Device {
+	return getAllDevicesIntern(useroid, Db)
 }
-func GetAllDevicesDeep(user string) *[]Device {
-	return getAllDevicesIntern(user, Db)
+func GetAllDevicesDeep(useroid uint) *[]Device {
+	return getAllDevicesIntern(useroid, Db)
 }
 
 func CreateDevice(device *Device) {
@@ -24,7 +24,7 @@ func DeleteDevice(device *Device) {
 	Db.Delete(&device)
 }
 
-func FindDeviceByID(user, id string) *Device {
+func FindDeviceByID(user uint, id string) *Device {
 	var device Device
 	numericID, _ := strconv.Atoi(strings.TrimPrefix(id, "device-"))
 
@@ -37,8 +37,8 @@ func SaveDevice(dev *Device) {
 	Db.Save(dev)
 }
 
-func getAllDevicesIntern(user string, db *gorm.DB) *[]Device {
+func getAllDevicesIntern(useroid uint, db *gorm.DB) *[]Device {
 	var devices []Device
-	db.Where("user_id = ?", user).Find(&devices)
+	db.Where("user_id = ?", useroid).Find(&devices)
 	return &devices
 }

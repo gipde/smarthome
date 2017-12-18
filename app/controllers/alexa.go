@@ -3,14 +3,15 @@ package controllers
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/revel/revel"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
 	"schneidernet/smarthome/app/models"
-	"strconv"
 	"time"
 )
 
@@ -66,13 +67,6 @@ type StateReport struct {
 	} `json:"event"`
 }
 
-// check Auth for axea requests
-func checkOauth2(token string) (error, string) {
-	//r := Request{}
-	user := dao.GetUser("admin")
-	return nil, strconv.Itoa(int(user.ID))
-}
-
 func (c Alexa) reportStateHandler(request Request, device *dao.Device) revel.Result {
 	var s StateReport
 	s.Event.Endpoint.EndpointID = request.Directive.Endpoint.EndpointID
@@ -113,9 +107,13 @@ type Alexa struct {
 func (c Alexa) Api(r Request) revel.Result {
 	c.Log.Debugf("API Request: %+v", r)
 
-	err, useroid := checkOauth2(r.Directive.Header.CorrelationToken)
-	if err != nil {
-		return c.RenderError(err)
+	valid, username := app.CheckToken(r.Directive.Endpoint.Scope.Token)
+	user := dao.GetUser(username)
+	if valid == false {
+		return c.RenderError(errors.New("invalid Token"))
+	}
+	if user == nil {
+		return c.RenderError(errors.New("User not found"))
 	}
 
 	c.Response.ContentType = "application/json"
@@ -123,12 +121,11 @@ func (c Alexa) Api(r Request) revel.Result {
 	switch r.Directive.Header.Name {
 
 	case "Discover":
-		return c.discovery(useroid)
+		return c.discovery(user.ID)
 
 	case "ReportState":
 		return c.reportStateHandler(
-			r, dao.FindDeviceByID(useroid, r.Directive.Endpoint.EndpointID))
-
+			r, dao.FindDeviceByID(user.ID, r.Directive.Endpoint.EndpointID))
 	case "TurnOn":
 		return c.doSwitch("ON")
 	case "TurnOff":
@@ -136,11 +133,11 @@ func (c Alexa) Api(r Request) revel.Result {
 
 	}
 	c.Response.Status = 500
-	return c.discovery(useroid)
+	return c.discovery(user.ID)
 	//return c.RenderText("Error")
 }
 
-func (c Alexa) discovery(useroid string) revel.Result {
+func (c Alexa) discovery(useroid uint) revel.Result {
 	response := generateDiscoveryResponse(dao.GetAllDevicesDeep(useroid))
 	return c.RenderJSON(response)
 }

@@ -35,13 +35,13 @@ func init() {
 	revel.OnAppStart(initGoogleOauth2)
 }
 
-func (c Main) getCurrentUser() string {
-	return c.Session["useroid"]
+func (c Main) getCurrentUserID() uint {
+	oid, _ := strconv.Atoi(c.Session["useroid"])
+	return uint(oid)
 }
 
 func (c Main) Settings() revel.Result {
-	oid, _ := strconv.Atoi(c.getCurrentUser())
-	user := dao.GetUserWithID(oid)
+	user := dao.GetUserWithID(c.getCurrentUserID())
 	c.ViewArgs["muser"] = *user
 	c.Log.Infof("SettingsFlash: %+v", c.Flash.Data)
 	return c.Render()
@@ -56,14 +56,13 @@ func (c Main) UserList() revel.Result {
 func (c Main) UserDel(id string) revel.Result {
 	c.Log.Infof("Delete User %s", id)
 	uid, _ := strconv.Atoi(id)
-	user := dao.GetUserWithID(uid)
+	user := dao.GetUserWithID(uint(uid))
 	dao.DeleteUser(user)
 	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 }
 
 func (c Main) UpdateUser(user dao.User) revel.Result {
-	oid, _ := strconv.Atoi(c.getCurrentUser())
-	dbUser := dao.GetUserWithID(oid)
+	dbUser := dao.GetUserWithID(c.getCurrentUserID())
 	dbUser.Name = user.Name
 	c.Log.Infof("Speichere User: %+v", dbUser)
 	dao.SaveUser(dbUser)
@@ -153,7 +152,7 @@ func (c Main) Index() revel.Result {
 }
 
 func (c Main) Dashboard() revel.Result {
-	c.ViewArgs["devices"] = dao.GetAllDevices(c.getCurrentUser())
+	c.ViewArgs["devices"] = dao.GetAllDevices(c.getCurrentUserID())
 	return c.Render()
 }
 
@@ -224,14 +223,13 @@ func (c Main) Logout() revel.Result {
 }
 
 func (c Main) CreateDevice(device dao.Device) revel.Result {
-	oid, _ := strconv.Atoi(c.getCurrentUser())
-	device.UserID = oid
+	device.UserID = c.getCurrentUserID()
 	dao.CreateDevice(&device)
 	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 }
 
 func (c Main) DeviceList() revel.Result {
-	devices := dao.GetAllDevices(c.getCurrentUser())
+	devices := dao.GetAllDevices(c.getCurrentUserID())
 	for _, i := range *devices {
 		c.Log.Info("Name: " + i.Name)
 	}
@@ -241,7 +239,7 @@ func (c Main) DeviceList() revel.Result {
 
 func (c Main) DeleteDevice(id string) revel.Result {
 	c.Log.Info("delete device: " + id + " ...")
-	device := dao.FindDeviceByID(c.getCurrentUser(), id)
+	device := dao.FindDeviceByID(c.getCurrentUserID(), id)
 	//TODO: Popup Question
 	//TODO: what if device do net exists
 
@@ -261,8 +259,7 @@ func (c Main) DeviceNew() revel.Result {
 
 func (c Main) CreateDev() revel.Result {
 
-	oid, _ := strconv.Atoi(c.getCurrentUser())
-	usr := dao.GetUserWithID(oid)
+	usr := dao.GetUserWithID(c.getCurrentUserID())
 	if usr == nil {
 		c.Log.Info("creating users")
 		return nil
@@ -409,28 +406,28 @@ type StateTopic struct {
 	consumer [](chan string)
 }
 
-var topics = make(map[string]*StateTopic)
+var topics = make(map[uint]*StateTopic)
 
-func register(user string) (chan string, chan string) {
-	if _, ok := topics[user]; !ok {
+func register(uoid uint) (chan string, chan string) {
+	if _, ok := topics[uoid]; !ok {
 		// we create a new StateTopic
 		topic := StateTopic{
 			input:    make(chan string),
 			consumer: [](chan string){},
 		}
-		topics[user] = &topic
+		topics[uoid] = &topic
 		// and start a per user TopicHandler
 		go topicHandler(&topic)
 	}
-	usertopic := topics[user]
+	usertopic := topics[uoid]
 	consumer := make(chan string)
 	usertopic.consumer = append(usertopic.consumer, consumer)
 	return usertopic.input, consumer
 }
 
-func unregister(user string, consumer chan string) {
-	revel.AppLog.Infof("Unregister Consumer %v for user %s -> %v", consumer, user, topics[user])
-	usertopic := topics[user]
+func unregister(uoid uint, consumer chan string) {
+	revel.AppLog.Infof("Unregister Consumer %v for user %s -> %v", consumer, uoid, topics[uoid])
+	usertopic := topics[uoid]
 
 	for i, c := range usertopic.consumer {
 		//TODO: check if equals is correct
@@ -448,9 +445,9 @@ func unregister(user string, consumer chan string) {
 		// we can close the usertopic
 		usertopic.input <- "QUIT"
 		close(usertopic.input)
-		delete(topics, user)
+		delete(topics, uoid)
 	}
-	revel.AppLog.Infof("Unregister ready %v for user %s -> %v", consumer, user, topics[user])
+	revel.AppLog.Infof("Unregister ready %v for user %s -> %v", consumer, uoid, topics[uoid])
 }
 
 func topicHandler(stateTopic *StateTopic) {
@@ -482,7 +479,7 @@ Das Rendering ist grundsätzlich Aufgabe des Clients selbst
 func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	c.Log.Infof("someone called a Websocket for ")
 
-	usertopic, consumer := register(c.getCurrentUser())
+	usertopic, consumer := register(c.getCurrentUserID())
 
 	//internal Receiver from StateTopic
 	go func() {
@@ -523,7 +520,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		}
 		c.Log.Infof("We got a message from Socket %s it's about device -> %+v", []byte(msg), incoming)
 
-		dev := dao.FindDeviceByID(c.getCurrentUser(), incoming.Device)
+		dev := dao.FindDeviceByID(c.getCurrentUserID(), incoming.Device)
 		c.Log.Infof("we found %+v", dev)
 
 		incoming.DeviceType = dev.DeviceType
@@ -609,7 +606,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	}
 EXITLOOP:
 
-	unregister(c.getCurrentUser(), consumer)
+	unregister(c.getCurrentUserID(), consumer)
 	c.Log.Info("we close the Websocket :(")
 	return nil
 }
