@@ -82,7 +82,7 @@ func initOauth2() {
 		ClientID:     "SmartHomeServer",
 		Scopes:       []string{"devices"},
 		ClientSecret: string(serverpass),
-		TokenURL:     "http://localhost:9000" + ContextRoot + "/oauth2/token",
+		TokenURL:     "http://localhost:9000/oauth2/token",
 	}
 	clients["SmartHomeServer"].Secret = hashedPassword
 }
