@@ -70,7 +70,7 @@ func ExampleStartupScript() {
 func markForever() {
 	for {
 		revel.AppLog.Infof("--MARK-- version: %s build: %s ", AppVersion, BuildTime)
-		time.Sleep(30 * time.Second)
+		time.Sleep(time.Hour)
 	}
 }
 
