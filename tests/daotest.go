@@ -3,6 +3,7 @@ package tests
 import (
 	"github.com/revel/revel/testing"
 	"schneidernet/smarthome/app/dao"
+	"time"
 )
 
 type DaoTest struct {
@@ -19,9 +20,9 @@ func (t *DaoTest) After() {
 
 func (t *DaoTest) TestExample() {
 	x := []byte("payload")
-	dao.SaveToken("code", &x)
+	dao.SaveToken("code", time.Now().UTC().Add(time.Hour), &x)
 	y := []byte("payload1")
-	dao.SaveToken("code1", &y)
+	dao.SaveToken("code1", time.Now().UTC().Add(time.Hour), &y)
 
 	t.AssertEqual(*dao.GetToken("code"), "payload")
 	t.AssertNotEqual(*dao.GetToken("code"), "payload1")

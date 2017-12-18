@@ -92,6 +92,7 @@ func (t *OauthTest) TestOAuth2() {
 	t.Assert(tok.Valid())
 
 	// 6. nun können wir den Token benutzen
+	revel.AppLog.Infof("ACCESSTOKEN: %s", tok.AccessToken)
 
 	// 7. wir springen hier zur Serverseite und versuchen den Token zu validieren
 	active, username := app.CheckToken(tok.AccessToken)

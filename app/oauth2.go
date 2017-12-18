@@ -20,6 +20,10 @@ import (
 	"time"
 )
 
+/*
+TODO: Check Token Revokation
+*/
+
 var (
 	// Clients which will be allowed to connect to our Oauth2 Service
 	clients map[string]*fosite.DefaultClient
@@ -32,29 +36,7 @@ type stackTracer interface {
 }
 
 var (
-	config = new(compose.Config)
-	strg   = OAuthStorageAdapter{}
-
-	strat = compose.CommonStrategy{
-		CoreStrategy: compose.NewOAuth2HMACStrategy(config, []byte("some-super-cool-42-secret-that-nobody-knows")),
-	}
-
-	oauth2Provider = compose.Compose(
-		config,
-		strg,
-		strat,
-		nil,
-
-		compose.OAuth2AuthorizeExplicitFactory,
-		compose.OAuth2AuthorizeImplicitFactory,
-		compose.OAuth2ClientCredentialsGrantFactory,
-		compose.OAuth2RefreshTokenGrantFactory,
-		compose.OAuth2ResourceOwnerPasswordCredentialsFactory,
-
-		compose.OAuth2TokenRevocationFactory,
-		compose.OAuth2TokenIntrospectionFactory,
-	)
-
+	oauth2Provider  fosite.OAuth2Provider
 	smartHomeClient clientcredentials.Config
 )
 
@@ -85,20 +67,64 @@ func initOauth2() {
 		TokenURL:     "http://localhost:9000/oauth2/token",
 	}
 	clients["SmartHomeServer"].Secret = hashedPassword
+
+	initProvider()
+
+	// Token Cleaner
+	go tokenCleaner()
+
+}
+
+func initProvider() {
+	// Init Oauth2provider
+	config := compose.Config{
+		AccessTokenLifespan:   time.Minute * 30,
+		AuthorizeCodeLifespan: time.Minute * 5,
+		IDTokenLifespan:       time.Minute * 5,
+	}
+	strg := OAuthStorageAdapter{}
+
+	oauthPass, _ := revel.Config.String("oauth.secret")
+	strat := compose.CommonStrategy{
+		CoreStrategy: compose.NewOAuth2HMACStrategy(&config, []byte(oauthPass)),
+	}
+
+	oauth2Provider = compose.Compose(
+		&config,
+		strg,
+		strat,
+		nil,
+
+		compose.OAuth2AuthorizeExplicitFactory,
+		compose.OAuth2AuthorizeImplicitFactory,
+		compose.OAuth2ClientCredentialsGrantFactory,
+		compose.OAuth2RefreshTokenGrantFactory,
+		compose.OAuth2ResourceOwnerPasswordCredentialsFactory,
+
+		compose.OAuth2TokenRevocationFactory,
+		compose.OAuth2TokenIntrospectionFactory,
+	)
+}
+
+func tokenCleaner() {
+	for {
+		dao.CleanExpiredTokens()
+		time.Sleep(time.Minute)
+	}
 }
 
 func newSession(user string) *fosite.DefaultSession {
 	return &fosite.DefaultSession{
 		ExpiresAt: map[fosite.TokenType]time.Time{
-			fosite.AccessToken:   time.Now().Add(time.Hour),
-			fosite.AuthorizeCode: time.Now().Add(time.Hour),
+			fosite.AccessToken:   time.Now().UTC().Add(time.Hour),
+			fosite.AuthorizeCode: time.Now().UTC().Add(time.Hour),
 		},
 		Username: user,
 	}
 }
 
 func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
-	revel.AppLog.Info("new OAUTH2 Authorize Request from %s", req.RemoteAddr)
+	revel.AppLog.Infof("new OAUTH2 Authorize Request from %s", req.RemoteAddr)
 	ctx := fosite.NewContext()
 
 	ar, err := oauth2Provider.NewAuthorizeRequest(ctx, req)
@@ -172,7 +198,7 @@ func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, 
 
 // Handler für alle Token Requests (authorize,revoke, ...)
 func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
-	revel.AppLog.Info("new OAUTH2 Token Request from %s", req.RemoteAddr)
+	revel.AppLog.Infof("new OAuth2 Token Request from %s", req.RemoteAddr)
 	ctx := fosite.NewContext()
 
 	// Create an empty session object which will be passed to the request handlers
@@ -261,7 +287,9 @@ func (c OAuthStorageAdapter) GetClient(ctx context.Context, id string) (fosite.C
 
 func (c OAuthStorageAdapter) CreateAuthorizeCodeSession(ctx context.Context, code string, request fosite.Requester) (err error) {
 	serialized, _ := json.Marshal(request)
-	err = dao.SaveToken(code, &serialized)
+	revel.AppLog.Debugf("Create Auth-Request: %+v", serialized)
+	expiry := request.GetSession().GetExpiresAt("access_token")
+	err = dao.SaveToken(code, expiry, &serialized)
 	return err
 }
 
@@ -283,7 +311,8 @@ func (c OAuthStorageAdapter) DeleteAuthorizeCodeSession(ctx context.Context, cod
 
 func (c OAuthStorageAdapter) CreateAccessTokenSession(ctx context.Context, signature string, request fosite.Requester) (err error) {
 	serialized, _ := json.Marshal(request)
-	err = dao.SaveToken(signature, &serialized)
+	expiry := request.GetSession().GetExpiresAt("access_token")
+	err = dao.SaveToken(signature, expiry, &serialized)
 	return err
 }
 
