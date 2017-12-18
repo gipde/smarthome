@@ -1,32 +1,31 @@
 package app
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/compose"
 	"github.com/pkg/errors"
 	"github.com/revel/revel"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
+	"golang.org/x/oauth2/clientcredentials"
 	"io/ioutil"
+	mathrand "math/rand"
 	"net/http"
+	"net/url"
 	"os"
+	"schneidernet/smarthome/app/dao"
+	"strings"
 	"time"
 )
 
 var (
 	// Clients which will be allowed to connect to our Oauth2 Service
 	clients map[string]*fosite.DefaultClient
-
-	// die dürfen nur für kurze zeit verfügbar sein --> cleaner
-	// ggf. über die Session abgefackelt -> es kommt ein Delete
-	authorizeCodes = map[string]fosite.Requester{}
-	// das könnte ggf. auch in die DB rein
-
-	accessTokens           = map[string]fosite.Requester{}
-	refreshTokens          = map[string]fosite.Requester{}
-	accessTokenRequestIDs  = map[string]string{}
-	refreshTokenRequestIDs = map[string]string{}
 )
+
+type OAuthStorageAdapter struct{}
 
 type stackTracer interface {
 	StackTrace() errors.StackTrace
@@ -55,15 +54,13 @@ var (
 		compose.OAuth2TokenRevocationFactory,
 		compose.OAuth2TokenIntrospectionFactory,
 	)
-)
 
-func init() {
-	revel.OnAppStart(initOauth2)
-}
+	smartHomeClient clientcredentials.Config
+)
 
 func initOauth2() {
 	var endpoint string
-	endpoint, ok := revel.Config.String("oauth.endpoints")
+	endpoint, ok := revel.Config.String("oauth.clients")
 	if !ok {
 		os.Exit(1)
 	}
@@ -73,6 +70,21 @@ func initOauth2() {
 		os.Exit(1)
 	}
 	json.Unmarshal(file, &clients)
+
+	// Sepcial Case SmartHomeServer
+	// this client will be used to query the introspection endpoint
+	mathrand.Seed(time.Now().UnixNano())
+	serverpass := make([]byte, 15)
+	rand.Read(serverpass)
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(serverpass), bcrypt.DefaultCost)
+
+	smartHomeClient = clientcredentials.Config{
+		ClientID:     "SmartHomeServer",
+		Scopes:       []string{"devices"},
+		ClientSecret: string(serverpass),
+		TokenURL:     "http://localhost:9000" + ContextRoot + "/oauth2/token",
+	}
+	clients["SmartHomeServer"].Secret = hashedPassword
 }
 
 func newSession(user string) *fosite.DefaultSession {
@@ -86,6 +98,7 @@ func newSession(user string) *fosite.DefaultSession {
 }
 
 func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
+	revel.AppLog.Info("new OAUTH2 Authorize Request from %s", req.RemoteAddr)
 	ctx := fosite.NewContext()
 
 	ar, err := oauth2Provider.NewAuthorizeRequest(ctx, req)
@@ -97,25 +110,23 @@ func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 
 	// Check a valid Revel-Session
 	// Session is encrypted, so we can trust
-	cook, _ := req.Cookie("REVEL_SESSION")
-	session := revel.GetSessionFromCookie(revel.GoCookie(*cook))
+	cook, err := req.Cookie("REVEL_SESSION")
+	if err == nil && cook != nil {
 
-	if user, ok := session["userid"]; ok {
-		//TODO: hier sollten wir noch in die DB schreiben, dass es für den User eine Autorisierung für einen fremden Service gibt
-		createAuthorizeResponse(ctx, ar, rw, user)
-		return
+		session := revel.GetSessionFromCookie(revel.GoCookie(*cook))
+
+		if user, ok := session["userid"]; ok {
+			createAuthorizeResponse(ctx, ar, rw, user)
+			return
+		}
+
 	}
 
 	// Append Parameters to Login-Page for further Redirect back to here
-	pars := "client_id=" + req.Form.Get("client_id") + "&" +
-		"redirect_uri=" + req.Form.Get("redirect_uri") + "&" +
-		"response_type=" + req.Form.Get("response_type") + "&" +
-		"scope=" + req.Form.Get("scope") + "&" +
-		"state=" + req.Form.Get("state") + "&" +
-		"none=" + req.Form.Get("none")
+	pars := req.Form.Encode()
 
 	// No Valid-Session -> Redirect to Resource-Server
-	http.Redirect(rw, req, ContextRoot+"/?checkOauth2&"+pars, 302)
+	http.Redirect(rw, req, PublicHost+ContextRoot+"/Main/Oauth?"+pars, 302)
 }
 
 func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, rw http.ResponseWriter, user string) {
@@ -145,13 +156,23 @@ func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, 
 		return
 	}
 
+	// Save Auth App in DB
+	dbUser := dao.GetUser(user)
+	if dbUser.Authorizations == nil {
+		dbUser.Authorizations = []dao.AuthorizeEntry{}
+	}
+	dbUser.Authorizations = append(dbUser.Authorizations, dao.AuthorizeEntry{
+		AppID: ar.GetClient().GetID(),
+	})
+	dao.SaveUser(dbUser)
+
 	// Awesome, now we redirect back to the client redirect uri and pass along an authorize code
 	oauth2Provider.WriteAuthorizeResponse(rw, ar, response)
 }
 
 // Handler für alle Token Requests (authorize,revoke, ...)
 func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
-	// revel.AppLog.Infof("oauthRequest(Token): %+v", req)
+	revel.AppLog.Info("new OAUTH2 Token Request from %s", req.RemoteAddr)
 	ctx := fosite.NewContext()
 
 	// Create an empty session object which will be passed to the request handlers
@@ -179,13 +200,6 @@ func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// TODO: hier die Daten in die DB reinschreiben
-	// Da ist der Benutzername
-	// accessRequest.GetSession().GetUsername()
-
-	// Da ist der Token
-	// response.GetAccessToken()
-
 	// All done, send the response.
 	oauth2Provider.WriteAccessResponse(rw, accessRequest, response)
 
@@ -193,26 +207,51 @@ func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 
 }
 
-// we check if token is valid
-func IntrospectionEndpoint(rw http.ResponseWriter, req *http.Request) {
+// IntrospectionHandlerFunc
+//  we check if Token is valid
+func IntrospectionHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 	ctx := fosite.NewContext()
 	mySessionData := newSession("")
 	ir, err := oauth2Provider.NewIntrospectionRequest(ctx, req, mySessionData)
 	if err != nil {
-		revel.AppLog.Errorf("Error occurred in NewAuthorizeRequest: %s\nStack: \n%s", err, err.(stackTracer).StackTrace())
+		revel.AppLog.Errorf("Error occurred in NewAuthorizeRequest: %+v\nStack: \n%s", err, err.(stackTracer).StackTrace())
 		oauth2Provider.WriteIntrospectionError(rw, err)
 		return
 	}
 	oauth2Provider.WriteIntrospectionResponse(rw, ir)
 }
 
-// Das muss in die DB rein
+func CheckToken(token string) (active bool, username string) {
 
-type OAuthStorageAdapter struct{}
+	// we build clientcredentials from servercredentials
+
+	data := url.Values{"token": {token}}
+	client := smartHomeClient.Client(context.Background())
+
+	// Firtst Request is a request to /token with client-credentails
+	// Second one is a post request with the original auth token
+	result, err := client.PostForm(strings.Replace(smartHomeClient.TokenURL, "token", "introspect", -1), data)
+	if err != nil {
+		revel.AppLog.Errorf("Error %v", err)
+		return false, ""
+	}
+	defer result.Body.Close()
+
+	var introspection = struct {
+		Active   bool   `json:"active"`
+		Username string `json:"username"`
+	}{}
+	out, _ := ioutil.ReadAll(result.Body)
+	json.Unmarshal(out, &introspection)
+
+	return introspection.Active, introspection.Username
+}
+
+/*
+Oauth2 Storage Implementation
+*/
 
 func (c OAuthStorageAdapter) GetClient(ctx context.Context, id string) (fosite.Client, error) {
-	// Jede Seite von der zugegriffen wird gilt als Client und braucht daher einen Eintrag
-	revel.AppLog.Info("OAuth2 Request from client: ", id)
 	cl, ok := clients[id]
 	if !ok {
 		return nil, fosite.ErrNotFound
@@ -221,84 +260,84 @@ func (c OAuthStorageAdapter) GetClient(ctx context.Context, id string) (fosite.C
 }
 
 func (c OAuthStorageAdapter) CreateAuthorizeCodeSession(ctx context.Context, code string, request fosite.Requester) (err error) {
-	revel.AppLog.Infof("CreateAuthorizeCodeSession code: %+v, request: %+v", code, request)
-	authorizeCodes[code] = request
-	return nil
-	// in die DB schreiben
+	serialized, _ := json.Marshal(request)
+	err = dao.SaveToken(code, &serialized)
+	return err
 }
 
 func (c OAuthStorageAdapter) GetAuthorizeCodeSession(ctx context.Context, code string, session fosite.Session) (request fosite.Requester, err error) {
-	rel, ok := authorizeCodes[code]
-	if !ok {
+	var result = fosite.NewAuthorizeRequest()
+	result.Session = session //result.Session == nil -> dirty Fix
+	data := dao.GetToken(code)
+	if data == nil {
 		return nil, fosite.ErrNotFound
 	}
-	return rel, nil
-
-	// TODO: aus der DB laden
+	json.Unmarshal(*data, &result)
+	return result, nil
 }
 
 func (c OAuthStorageAdapter) DeleteAuthorizeCodeSession(ctx context.Context, code string) (err error) {
-	delete(authorizeCodes, code)
-	return nil
-
-	// TODO: aus der DB löschen
+	err = dao.DeleteToken(code)
+	return err
 }
 
 func (c OAuthStorageAdapter) CreateAccessTokenSession(ctx context.Context, signature string, request fosite.Requester) (err error) {
-	revel.AppLog.Infof("CreateAccessTokenSession code: %+v, request: %+v", signature, request)
-
-	// dao.SaveToken() in DB, aber nur die signatur, und ggf. session.claim.audience
-
-	accessTokens[signature] = request
-	accessTokenRequestIDs[request.GetID()] = signature
-	return nil
+	serialized, _ := json.Marshal(request)
+	err = dao.SaveToken(signature, &serialized)
+	return err
 }
 
-/*
- */
 func (c OAuthStorageAdapter) GetAccessTokenSession(ctx context.Context, signature string, session fosite.Session) (request fosite.Requester, err error) {
-	revel.AppLog.Info("GetAccessTokenSession: %+v", ctx)
-	// das wird wohl über den Introspect benötigt
-	// aus der DB laden
-	return nil, nil
+	var result = fosite.NewAccessRequest(session)
+	data := dao.GetToken(signature)
+	if data != nil {
+		json.Unmarshal(*data, &result)
+		if data == nil {
+			return nil, fosite.ErrNotFound
+		}
+		return result, nil
+	}
+
+	return nil, fosite.ErrTokenSignatureMismatch
+
 }
 
 func (c OAuthStorageAdapter) DeleteAccessTokenSession(ctx context.Context, signature string) (err error) {
-	revel.AppLog.Info("DeleteAccessTokenSession: %+v", ctx)
-	return nil
+	return c.DeleteAuthorizeCodeSession(ctx, signature)
 }
 
 func (c OAuthStorageAdapter) CreateRefreshTokenSession(ctx context.Context, signature string, request fosite.Requester) (err error) {
-	revel.AppLog.Info("CreateRefreshTOkenSession: %+v", ctx)
-	return nil
+	return c.CreateAccessTokenSession(ctx, signature, request)
 }
 
 func (c OAuthStorageAdapter) GetRefreshTokenSession(ctx context.Context, signature string, session fosite.Session) (request fosite.Requester, err error) {
-	revel.AppLog.Info("GetRefreshTOkenSession: %+v", ctx)
-	return nil, nil
+	return c.GetAccessTokenSession(ctx, signature, session)
 }
 
 func (c OAuthStorageAdapter) DeleteRefreshTokenSession(ctx context.Context, signature string) (err error) {
-	revel.AppLog.Info("DeleteRefreshTOkenSession: %+v", ctx)
-	return nil
+	return c.DeleteAuthorizeCodeSession(ctx, signature)
 }
 
+/*
+TODO: not IMPLEMENTED
+*/
+
 func (c OAuthStorageAdapter) TokenRevocationStorage(ctx context.Context, requestID string) error {
-	revel.AppLog.Info("TokenRevocateionStorage: %+v", ctx)
+	revel.AppLog.Infof("TokenRevocateionStorage: %+v", ctx)
 	return nil
 }
 
 func (c OAuthStorageAdapter) RevokeRefreshToken(ctx context.Context, requestID string) error {
-	revel.AppLog.Info("RevokeRefreshToken: %+v", ctx)
+	revel.AppLog.Infof("RevokeRefreshToken: %+v", ctx)
 	return nil
 }
 
 func (c OAuthStorageAdapter) RevokeAccessToken(ctx context.Context, requestID string) error {
-	revel.AppLog.Info("RevokeAccessToken: %+v", ctx)
+	revel.AppLog.Infof("RevokeAccessToken: %+v", ctx)
 	return nil
 }
 
 func (c OAuthStorageAdapter) Authenticate(ctx context.Context, name string, secret string) error {
-	revel.AppLog.Info("Authenticate: %+v", ctx)
+	revel.AppLog.Infof("Authenticate: %+v", ctx)
 	return nil
 }

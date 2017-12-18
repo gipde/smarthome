@@ -12,6 +12,14 @@
 - Garagentor
 - IP Kamera
 
+## Passwort-Hash
+Passwort Hashes werden für verschiedene Dinge benötigt
+- OAuth2
+- Passwortablage der User
+
+Um einen gültigen Passwort-Hash zu erhalten bitte den folgenden Controller aufrufen
+http://localhost:9000/main/GetHash?password=foobar
+
 
 ## Cross-compilation
 

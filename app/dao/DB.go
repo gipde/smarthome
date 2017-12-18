@@ -10,11 +10,11 @@ import (
 
 type User struct {
 	gorm.Model
-	UserID     string
-	Name       string
-	Password   []byte
-	Devices    []Device
-	OAuthToken []OauthToken
+	UserID         string
+	Name           string
+	Password       []byte
+	Devices        []Device
+	Authorizations []AuthorizeEntry
 }
 
 type Device struct {
@@ -28,9 +28,16 @@ type Device struct {
 	Connected   bool
 }
 
-type OauthToken struct {
+type AuthorizeEntry struct {
 	gorm.Model
 	UserID int
+	AppID  string
+}
+
+type Token struct {
+	gorm.Model
+	Code    string
+	PayLoad []byte
 }
 
 var Db *gorm.DB
@@ -53,6 +60,8 @@ func InitDB() {
 	Db = dbInt2.AutoMigrate(
 		&User{},
 		&Device{},
+		&AuthorizeEntry{},
+		&Token{},
 	)
 
 	adminuser, _ := revel.Config.String("user.admin")

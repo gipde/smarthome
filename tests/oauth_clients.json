@@ -1,7 +1,7 @@
 {
     "my-client": {
         "id": "my-client",
-        "client_secret": "JDJhJDEwJEl4TWRJNmQuTElSWlBwU2ZFd05vZXU0clkzRmhEUkVzeEZKWGlrY2dkUlJBU3R4VWxzdUVP",
+        "client_secret": "JDJhJDEwJFdUdWZZWndjNE5JZzVaUTdWazBGNE9aY01BUTY5S01hUjIycWcyZzBvVlh5MWRVR0RORUV1",
         "redirect_uris": [
             "http://localhost:9000/callback"
         ],
@@ -22,9 +22,25 @@
         ],
         "public": false
     },
-    "amzn1.ask.skill.0cf22317-49b7-49d2-b053-9fd331fa8ffc": {
-        "id": "amzn1.ask.skill.0cf22317-49b7-49d2-b053-9fd331fa8ffc",
-        "client_secret": "JDJhJDEwJEl4TWRJNmQuTElSWlBwU2ZFd05vZXU0clkzRmhEUkVzeEZKWGlrY2dkUlJBU3R4VWxzdUVP",
+    "SmartHomeServer": {
+        "id": "SmartHomeServer",
+        "redirect_uris": [
+            "http://localhost:9000/callback"
+        ],
+        "grant_types": [
+            "client_credentials"
+        ],
+        "response_types": [
+            "token"
+        ],
+        "scopes": [
+            "devices"
+        ],
+        "public": false
+    },
+    "AlexaSmartHome": {
+        "id": "AlexaSmartHome",
+        "client_secret": "JDJhJDEwJC40NWNYeUdKTWNLV0dYWnNGOWxpV3VWbElTakFaREZ0YVJjbmFYaHREM0JIN2tCcjZ6azJL",
         "redirect_uris": [
             "https://layla.amazon.com/api/skill/link/MDPHWV94UTOJJ",
             "https://alexa.amazon.co.jp/api/skill/link/MDPHWV94UTOJJ",

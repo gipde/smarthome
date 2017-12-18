@@ -45,6 +45,7 @@ func init() {
 	revel.OnAppStart(ExampleStartupScript)
 	revel.OnAppStart(dao.InitDB)
 	revel.OnAppStart(setAppPathes)
+	revel.OnAppStart(initOauth2)
 
 	// revel.OnAppStart(FillCache)
 	revel.AppLog.Info("Initializing Ready")
@@ -92,7 +93,8 @@ func installHandlers() {
 				http.HandlerFunc(AuthorizeHandlerFunc)) // the oauth2
 			serveMux.Handle("/oauth2/token",
 				http.HandlerFunc(TokenHandlerFunc)) // the oauth2
-
+			serveMux.Handle("/oauth2/introspect",
+				http.HandlerFunc(IntrospectionHandlerFunc))
 			*srvHandler = serveMux
 		}
 		return
