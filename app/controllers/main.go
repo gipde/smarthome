@@ -71,8 +71,6 @@ func (c Main) UpdateUser(user dao.User) revel.Result {
 }
 
 func checkUser(c *revel.Controller) revel.Result {
-	c.Log.Infof("Check User: %+v in %+v", c.Session, c.Action)
-
 	// Set app.ContextRoot if we ar behind a rewritng Proxy
 	c.ViewArgs["contextRoot"] = app.ContextRoot
 	c.ViewArgs["websocketHost"] = app.WebSocketHost
@@ -84,15 +82,8 @@ func checkUser(c *revel.Controller) revel.Result {
 		return nil
 	}
 
-	// Spezialbehandlung für Oauth2 Login
-	if _, ok := c.Params.Query["checkOauth2"]; ok {
-		c.Log.Info("Checkin in oauth mode")
-		c.Flash.Data["oauth"] = "true"
-	}
-
 	// wenn das DeviceWebsocket aufgerufen wird, erlaube auch BasicAuth
 	if c.Action == "Main.DeviceFeed" {
-
 		if auth := c.Request.Header.Get("Authorization"); auth != "" {
 			// Split up the string to get just the data, then get the credentials
 			username, password, err := getCredentials(strings.Split(auth, " ")[1])
@@ -111,7 +102,6 @@ func checkUser(c *revel.Controller) revel.Result {
 					return nil
 				}
 			}
-			c.Log.Info("We render 401")
 			return c.RenderError(errors.New("401: Not authorized"))
 		}
 	}
@@ -120,14 +110,15 @@ func checkUser(c *revel.Controller) revel.Result {
 	if c.Session["useroid"] == "" {
 		c.Flash.Error("not logged in")
 
-		// sorgt dafür dass wieder zur aufrufenden Seite zurückgesprungen wird
-		newCookie := &http.Cookie{
+		// redirect back to intensional site
+		c.Log.Infof("I store a Cookie - you would like to open %s", app.ContextRoot+c.Request.GetRequestURI())
+		c.SetCookie(&http.Cookie{
 			Name:    REVELREDIRECT,
+			Path:    "/",
 			Value:   app.ContextRoot + c.Request.GetRequestURI(),
 			Expires: time.Now().Add(time.Duration(5) * time.Minute),
-		}
-		c.SetCookie(newCookie)
-		c.Log.Infof("not logged in, redirect to %s", app.ContextRoot+routes.Main.Index())
+		})
+
 		return c.Redirect(app.ContextRoot + routes.Main.Index())
 	}
 
@@ -136,47 +127,32 @@ func checkUser(c *revel.Controller) revel.Result {
 }
 
 func (c Main) Oauth() revel.Result {
+	c.ViewArgs["action"] = app.ContextRoot + "/oauth2/auth?" + c.Params.Query.Encode()
+	for _, s := range []string{"redirect_uri", "scope", "client_id"} {
+		c.ViewArgs[s] = c.Params.Query.Get(s)
+	}
 	return c.Render()
 }
 
 func (c Main) Index() revel.Result {
 
-	// when request comes for oauth -> LoginPanel
-
-	if c.Flash.Data["oauth"] == "true" {
-		// wenn bereits eine gültige Sitzung vorhanden ist, muss nur noch ein Bestätigungsdialog angezeigt werden
-
-		c.ViewArgs["action"] = app.ContextRoot + "/oauth2/auth"
-
-		acc := map[string]string{}
-		f := func(keys []string) {
-			for _, v := range keys {
-				acc[v] = c.Params.Get(v)
-			}
-		}
-
-		f([]string{"client_id", "redirect_uri", "response_type", "scope", "state", "nonce"})
-		c.ViewArgs["hidden"] = acc
-		return c.Render()
-	}
-
-	// wenn gültie Session vorhanen, dann gleich weiter zum Dashboard
-	if _, ok := c.Session["useroid"]; ok {
+	// if a valid session is present
+	if session, validSession := c.Session["useroid"]; validSession {
+		c.Log.Infof("Session identified: %+v", session)
 		return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 	}
 
-	//Google Oauth2
+	//Google Oauth2 Link
 	// Es wird ein State über die URL durchgeschleift und später geprüft, ob dieser State noch da ist.
 	state := randToken()
 	c.Session["state"] = state
 	c.ViewArgs["google_url"] = conf.AuthCodeURL(state)
 
-	c.ViewArgs["action"] = app.ContextRoot + "/main/login"
+	// Render LoginPanel
 	return c.Render()
 }
 
 func (c Main) Dashboard() revel.Result {
-	c.Log.Infof("engin name: %+v", (*revel.GoEngine).Name)
 	c.ViewArgs["devices"] = dao.GetAllDevices(c.getCurrentUser())
 	return c.Render()
 }
@@ -193,22 +169,32 @@ func CheckCredentials(username, password string) error {
 	return nil
 }
 
+func (c Main) getSuccessfulLoginRedirect() string {
+	if cookie, err := c.Request.Cookie(REVELREDIRECT); err == nil {
+		c.Log.Infof("we got a revelredirect-cookie %+v", cookie)
+		target := cookie.GetValue()
+		// cookie löschen
+		c.SetCookie(&http.Cookie{
+			Name:    REVELREDIRECT,
+			Expires: time.Now().Add(time.Duration(-5) * time.Minute),
+		})
+		c.Log.Info("we redirect to " + target)
+		return target
+	}
+	c.Log.Info("We redirect to Dashbaord")
+	return app.ContextRoot + routes.Main.Dashboard()
+}
+
+// Function to generate a Hash from a Password
+func (c Main) GetHash(password string) revel.Result {
+	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	retval := struct{ Password []byte }{Password: hash}
+	return c.RenderJSON(retval)
+
+}
+
 // REST Api
 func (c Main) Login(username, password string, remember bool) revel.Result {
-
-	target := app.ContextRoot + routes.Main.Dashboard()
-
-	if v, err := c.Request.Cookie(REVELREDIRECT); err == nil {
-		target = v.GetValue()
-		new_cookie := &http.Cookie{
-			Name:    REVELREDIRECT,
-			Value:   target,
-			Expires: time.Now().Add(time.Duration(-5) * time.Minute),
-		}
-		c.SetCookie(new_cookie)
-	}
-
-	//TODO: Remember auswerten
 	dbUsr := dao.GetUser(username)
 	if dbUsr == nil {
 		c.Flash.Error("User unbekannt")
@@ -221,8 +207,8 @@ func (c Main) Login(username, password string, remember bool) revel.Result {
 		return c.Redirect(app.ContextRoot + routes.Main.Index())
 	}
 	c.setUserSession(dbUsr)
-	c.Log.Info("we redirect to " + target)
-	return c.Redirect(target)
+
+	return c.Redirect(c.getSuccessfulLoginRedirect())
 }
 
 func (c Main) setUserSession(dbUsr *dao.User) {
@@ -332,7 +318,7 @@ type GUserInfo struct {
 
 func initGoogleOauth2() {
 	var c Credentials
-	file, err := ioutil.ReadFile(revel.BasePath + "/secret/creds.json")
+	file, err := ioutil.ReadFile(revel.BasePath + "/conf/google_creds.json")
 	if err != nil {
 		fmt.Printf("File error: %v\n", err)
 		os.Exit(1)
@@ -406,7 +392,7 @@ func (c Main) OAuth2CallBackGoogle() revel.Result {
 	c.setUserSession(dbUsr)
 	c.Log.Info("Userinfo Mail: ", userinfo.Email)
 
-	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
+	return c.Redirect(c.getSuccessfulLoginRedirect())
 
 }
 
