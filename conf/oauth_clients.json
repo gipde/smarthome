@@ -17,7 +17,8 @@
         "response_types": [
             "id_token",
             "code",
-            "token"
+            "token",
+            "offline"
         ],
         "scopes": [
             "devices"

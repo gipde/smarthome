@@ -2,6 +2,7 @@ package app
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/compose"
@@ -84,7 +85,7 @@ func initProvider() {
 	}
 	strg := OAuthStorageAdapter{}
 
-	oauthPass, _ := revel.Config.String("oauth.secret")
+	oauthPass := randToken()
 	strat := compose.CommonStrategy{
 		CoreStrategy: compose.NewOAuth2HMACStrategy(&config, []byte(oauthPass)),
 	}
@@ -255,6 +256,11 @@ func IntrospectionHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 
 func CheckToken(token string) (active bool, username string) {
 
+	if ok, _ := revel.Config.Bool("oauth.checktoken"); !ok {
+		user, _ := revel.Config.String("user.admin")
+		return true, user
+	}
+
 	// we build clientcredentials from servercredentials
 	revel.AppLog.Debugf("We check Token for Validity: %s", token)
 
@@ -275,6 +281,7 @@ func CheckToken(token string) (active bool, username string) {
 		Username string `json:"username"`
 	}{}
 	out, _ := ioutil.ReadAll(result.Body)
+	revel.AppLog.Debugf("we get back from Introspection: %s", out)
 	json.Unmarshal(out, &introspection)
 
 	return introspection.Active, introspection.Username
@@ -376,4 +383,10 @@ func (c OAuthStorageAdapter) RevokeAccessToken(ctx context.Context, requestID st
 func (c OAuthStorageAdapter) Authenticate(ctx context.Context, name string, secret string) error {
 	revel.AppLog.Infof("Authenticate: %+v", ctx)
 	return nil
+}
+
+func randToken() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return base64.StdEncoding.EncodeToString(b)
 }

@@ -105,34 +105,11 @@ func (t *OauthTest) TestOAuth2() {
 	t.Assert(username == "")
 	t.Assert(active == false)
 
+	// 9. wir versuchen den Token zu refreshen
+
+	// 10. wir wiederrufen den Token (Revoke)
+
 }
-
-// func testToken(token string) (bool, string) {
-// 	var appClientConf = clientcredentials.Config{
-// 		ClientID:     "my-client",
-// 		ClientSecret: "foobar",
-// 		Scopes:       []string{"devices"},
-// 		TokenURL:     "http://localhost:8180/oauth2/token",
-// 	}
-
-// 	data := url.Values{"token": {token}}
-// 	revel.AppLog.Infof("Encode Parameter %s", data.Encode())
-
-// 	client := appClientConf.Client(context.Background())
-// 	revel.AppLog.Infof("Type of client %+v")
-// 	result, _ := client.PostForm(strings.Replace(appClientConf.TokenURL, "token", "introspect", -1), data)
-// 	defer result.Body.Close()
-
-// 	var introspection = struct {
-// 		Active   bool   `json:"active"`
-// 		Username string `json:"username"`
-// 	}{}
-// 	out, _ := ioutil.ReadAll(result.Body)
-// 	json.Unmarshal(out, &introspection)
-
-// 	return introspection.Active, introspection.Username
-
-// }
 
 func (t *OauthTest) TestIntrospect() {
 
