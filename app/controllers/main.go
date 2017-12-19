@@ -31,7 +31,7 @@ type Main struct {
 }
 
 func init() {
-	revel.InterceptFunc(checkUser, revel.BEFORE, &Main{})
+	revel.InterceptMethod(Main.checkUser, revel.BEFORE)
 	revel.OnAppStart(initGoogleOauth2)
 }
 
@@ -64,12 +64,13 @@ func (c Main) UserDel(id string) revel.Result {
 func (c Main) UpdateUser(user dao.User) revel.Result {
 	dbUser := dao.GetUserWithID(c.getCurrentUserID())
 	dbUser.Name = user.Name
+	dbUser.UserID = c.Session["userid"]
 	c.Log.Infof("Speichere User: %+v", dbUser)
 	dao.SaveUser(dbUser)
 	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 }
 
-func checkUser(c *revel.Controller) revel.Result {
+func (c Main) checkUser() revel.Result {
 	// Set app.ContextRoot if we ar behind a rewritng Proxy
 	c.ViewArgs["contextRoot"] = app.ContextRoot
 	c.ViewArgs["websocketHost"] = app.WebSocketHost
@@ -89,15 +90,15 @@ func checkUser(c *revel.Controller) revel.Result {
 			if err != nil {
 				return c.RenderError(err)
 			}
-			// TODO: check user/pass
+
 			dbUsr := dao.GetUser(username)
+			c.Log.Infof("we got pass %s from websocket", password)
 			if dbUsr != nil {
-				err := bcrypt.CompareHashAndPassword(dbUsr.Password, []byte(password))
+				err := bcrypt.CompareHashAndPassword(dbUsr.DevicePassword, []byte(password))
 				if err == nil {
 					c.Session["useroid"] = strconv.Itoa(int(dbUsr.ID))
 					c.Session["userid"] = dbUsr.UserID
 					c.Log.Infof("Setting User into Session %+v", c.Session)
-					// c.setUserSession(dbUsr)
 					return nil
 				}
 			}
@@ -189,7 +190,6 @@ func (c Main) GetHash(password string) revel.Result {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	retval := struct{ Password []byte }{Password: hash}
 	return c.RenderJSON(retval)
-
 }
 
 // REST Api
@@ -269,9 +269,9 @@ func (c Main) CreateDev() revel.Result {
 	for i := 0; i < 10; i++ {
 		d := dao.Device{
 			Name:        "Schalter",
-			Description: "Schalter im FLur",
-			Producer:    "WernerSchneiderNET",
-			DeviceType:  2,
+			Description: "Schalter im Flur",
+			Producer:    "Werner@SchneiderNET",
+			DeviceType:  alexa.DeviceSwitch.ID(),
 		}
 		usr.Devices = append(usr.Devices, d)
 	}
@@ -481,6 +481,8 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
 	usertopic, consumer := register(c.getCurrentUserID())
 
+	// TODO: set connected-Flag on Websocket Connection from Device not from browser
+
 	//internal Receiver from StateTopic
 	go func() {
 		for {
@@ -620,4 +622,14 @@ func getCredentials(data string) (username, password string, err error) {
 	username = strData[0]
 	password = strData[1]
 	return
+}
+
+func (c Main) CreateDevicePassword() revel.Result {
+	user := dao.GetUserWithID(c.getCurrentUserID())
+	randompassword := "hallo"
+	c.ViewArgs["pass"] = randompassword
+	user.DevicePassword, _ = bcrypt.GenerateFromPassword([]byte(randompassword), bcrypt.DefaultCost)
+	dao.SaveUser(user)
+
+	return c.Render()
 }

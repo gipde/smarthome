@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"fmt"
 	"github.com/revel/revel"
+	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
 	"strconv"
 	"time"
@@ -24,4 +26,9 @@ func (c Debug) ListTokens() revel.Result {
 		html += "</tr>"
 	}
 	return c.RenderHTML(html)
+}
+
+func (c Debug) CheckToken(token string) revel.Result {
+	valid, user := app.CheckToken(token)
+	return c.RenderText(fmt.Sprintf("active: %s\nuser: %s\n", valid, user))
 }

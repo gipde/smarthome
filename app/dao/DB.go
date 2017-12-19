@@ -13,6 +13,7 @@ type User struct {
 	UserID         string
 	Name           string
 	Password       []byte
+	DevicePassword []byte
 	Devices        []Device
 	Authorizations []AuthorizeEntry
 }
@@ -69,6 +70,8 @@ func InitDB() {
 	if admin := GetUser(adminuser); admin == nil {
 		user := User{Name: adminuser, UserID: adminuser}
 		user.Password, _ = bcrypt.GenerateFromPassword([]byte(adminuser), bcrypt.DefaultCost)
+		user.DevicePassword, _ = bcrypt.GenerateFromPassword([]byte(adminuser), bcrypt.DefaultCost)
+
 		Db.Create(&user)
 		user.Devices = *GetTestDevices()
 		Db.Save(&user)

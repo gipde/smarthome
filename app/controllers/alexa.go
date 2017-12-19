@@ -37,7 +37,12 @@ type Request struct {
 			}
 			EndpointID string
 		}
-		Payload map[string]interface{}
+		Payload struct {
+			Scope struct {
+				Type  string
+				Token string
+			}
+		}
 	}
 }
 
@@ -107,7 +112,15 @@ type Alexa struct {
 func (c Alexa) Api(r Request) revel.Result {
 	c.Log.Debugf("API Request: %+v", r)
 
-	valid, username := app.CheckToken(r.Directive.Endpoint.Scope.Token)
+	var token string
+	if r.Directive.Header.Namespace == "Alexa.Discovery" {
+		token = r.Directive.Payload.Scope.Token
+	} else {
+		token = r.Directive.Endpoint.Scope.Token
+	}
+	valid, username := app.CheckToken(token)
+	c.Log.Infof("valid: %b user: %s", valid, username)
+
 	user := dao.GetUser(username)
 	if valid == false {
 		return c.RenderError(errors.New("invalid Token"))

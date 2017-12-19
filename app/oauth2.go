@@ -184,6 +184,10 @@ func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, 
 
 	// Save Auth App in DB
 	dbUser := dao.GetUser(user)
+	if dbUser == nil {
+		revel.AppLog.Errorf("Logged In User %s nof found", user)
+		return
+	}
 	if dbUser.Authorizations == nil {
 		dbUser.Authorizations = []dao.AuthorizeEntry{}
 	}
@@ -226,6 +230,8 @@ func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	revel.AppLog.Debugf("We created a new ACCESSTOKEN for grants %+v: %s", accessRequest.GetGrantTypes(), response.GetAccessToken())
+
 	// All done, send the response.
 	oauth2Provider.WriteAccessResponse(rw, accessRequest, response)
 
@@ -250,6 +256,7 @@ func IntrospectionHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 func CheckToken(token string) (active bool, username string) {
 
 	// we build clientcredentials from servercredentials
+	revel.AppLog.Debugf("We check Token for Validity: %s", token)
 
 	data := url.Values{"token": {token}}
 	client := smartHomeClient.Client(context.Background())
@@ -287,7 +294,7 @@ func (c OAuthStorageAdapter) GetClient(ctx context.Context, id string) (fosite.C
 
 func (c OAuthStorageAdapter) CreateAuthorizeCodeSession(ctx context.Context, code string, request fosite.Requester) (err error) {
 	serialized, _ := json.Marshal(request)
-	revel.AppLog.Debugf("Create Auth-Request: %+v", serialized)
+	revel.AppLog.Debugf("Create Auth-Request: %+v", string(serialized))
 	expiry := request.GetSession().GetExpiresAt("access_token")
 	err = dao.SaveToken(code, expiry, &serialized)
 	return err

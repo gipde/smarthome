@@ -31,12 +31,6 @@ func doSwitch(ws *websocket.Conn, t int) error {
 	case 2:
 		req.Command = "SETSTATE"
 		req.State = "OFF"
-	case 3:
-		req.Command = "CONNECT"
-		req.Connected = true
-	case 4:
-		req.Command = "DISCONNECT"
-		req.Connected = false
 	}
 	fmt.Printf("Send: %+v\n", req)
 	return websocket.JSON.Send(ws, &req)
@@ -49,7 +43,7 @@ func basicAuth(username, password string) string {
 func main() {
 
 	// var host="wss://2e1512f0-d590-4eed-bb41-9ad3abd03edf.pub.cloud.scaleway.com/sh/Main/DeviceFeed"
-	var host = "ws://localhost:9000/Main/DeviceFeed"
+	var host = "ws://localhost:8180/Main/DeviceFeed"
 	config, _ := websocket.NewConfig(host, "http://localhost/")
 	config.Header.Add("Authorization", "Basic "+basicAuth("admin", "admin"))
 	ws, err := websocket.DialConfig(config)
@@ -88,11 +82,6 @@ func main() {
 			err = doSwitch(ws, 1)
 		case "off":
 			err = doSwitch(ws, 2)
-		case "connect":
-			err = doSwitch(ws, 3)
-		case "disconnect":
-			err = doSwitch(ws, 4)
-
 		}
 
 		if exit || err != nil {
