@@ -140,6 +140,10 @@
                     loadhandler();
                 }
 
+                socket.onclose = function() {
+                    console.log("Websocket will be closed")
+                }
+
                 // wait until socket is connected
                 // TODO: Nice UI State to display state of Websocket
                 connectionError = $("#connection-error")

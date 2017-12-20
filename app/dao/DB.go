@@ -3,6 +3,7 @@ package dao
 import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/ory/fosite"
 	"github.com/revel/revel"
 	"golang.org/x/crypto/bcrypt"
 	"time"
@@ -31,15 +32,18 @@ type Device struct {
 
 type AuthorizeEntry struct {
 	gorm.Model
-	UserID uint
-	AppID  string
+	UserID       uint
+	AppID        string
+	RefreshToken string
 }
 
 type Token struct {
 	gorm.Model
-	Expiry  time.Time
-	Code    string
-	PayLoad []byte
+	Expiry    time.Time
+	TokenID   string
+	TokenType fosite.TokenType
+	Signature string
+	PayLoad   []byte
 }
 
 var Db *gorm.DB

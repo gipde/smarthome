@@ -2,15 +2,18 @@ package dao
 
 import (
 	"errors"
+	"github.com/ory/fosite"
 	"github.com/revel/revel"
 	"time"
 )
 
-func SaveToken(code string, expiry time.Time, payload *[]byte) error {
+func SaveToken(signature, tokenid string, tokentype fosite.TokenType, expiry time.Time, payload *[]byte) error {
 	result := Db.Save(&Token{
-		Code:    code,
-		Expiry:  expiry,
-		PayLoad: *payload,
+		Signature: signature,
+		TokenID:   tokenid,
+		TokenType: tokentype,
+		Expiry:    expiry,
+		PayLoad:   *payload,
 	})
 	if result.Error != nil {
 		return result.Error
@@ -21,9 +24,18 @@ func SaveToken(code string, expiry time.Time, payload *[]byte) error {
 	return nil
 }
 
-func GetToken(code string) *[]byte {
+func GetTokenBySignature(signature string) *[]byte {
 	var aToken Token
-	result := Db.First(&aToken, "code = ?", code)
+	result := Db.First(&aToken, "signature = ?", signature)
+	if result.RowsAffected == 0 {
+		return nil
+	}
+	return &aToken.PayLoad
+}
+
+func GetTokenByTokenID(tokenid string, tokentype fosite.TokenType) *[]byte {
+	var aToken Token
+	result := Db.First(&aToken, "token_id = ?  and token_type=?", tokenid, tokentype)
 	if result.RowsAffected == 0 {
 		return nil
 	}
@@ -32,7 +44,16 @@ func GetToken(code string) *[]byte {
 
 func DeleteToken(code string) error {
 	var token Token
-	result := Db.Delete(&token, "code = ?", code)
+	result := Db.Delete(&token, "signature = ?", code)
+	if result.RowsAffected == 0 {
+		return errors.New("no token found")
+	}
+	return nil
+}
+
+func DeleteTokenByTokenID(tokenid string, tokentype fosite.TokenType) error {
+	var aToken Token
+	result := Db.Delete(&aToken, "token_id = ?  and token_type=?", tokenid, tokentype)
 	if result.RowsAffected == 0 {
 		return errors.New("no token found")
 	}

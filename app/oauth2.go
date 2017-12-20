@@ -21,15 +21,6 @@ import (
 	"time"
 )
 
-/*
-TODO: Check Token Revokation
-*/
-
-var (
-	// Clients which will be allowed to connect to our Oauth2 Service
-	clients map[string]*fosite.DefaultClient
-)
-
 type OAuthStorageAdapter struct{}
 
 type stackTracer interface {
@@ -37,17 +28,22 @@ type stackTracer interface {
 }
 
 var (
+	// Clients which will be allowed to connect to our Oauth2 Service
+	clients map[string]*fosite.DefaultClient
+)
+
+var (
 	oauth2Provider  fosite.OAuth2Provider
 	smartHomeClient clientcredentials.Config
 )
 
 func initOauth2() {
-	var endpoint string
-	endpoint, ok := revel.Config.String("oauth.clients")
+	var clientconfig string
+	clientconfig, ok := revel.Config.String("oauth.clients")
 	if !ok {
 		os.Exit(1)
 	}
-	file, err := ioutil.ReadFile(revel.BasePath + "/" + endpoint)
+	file, err := ioutil.ReadFile(revel.BasePath + "/" + clientconfig)
 	if err != nil {
 		revel.AppLog.Errorf("File error: %v\n", err)
 		os.Exit(1)
@@ -79,9 +75,8 @@ func initOauth2() {
 func initProvider() {
 	// Init Oauth2provider
 	config := compose.Config{
-		AccessTokenLifespan:   time.Minute * 30,
 		AuthorizeCodeLifespan: time.Minute * 5,
-		IDTokenLifespan:       time.Minute * 5,
+		AccessTokenLifespan:   time.Minute * 10,
 	}
 	strg := OAuthStorageAdapter{}
 
@@ -107,6 +102,8 @@ func initProvider() {
 	)
 }
 
+// Token Clenaer -> remove outdated-Tokens
+// TODO: wird ein abgelaufener Token nicht automatisch entfernt ???
 func tokenCleaner() {
 	for {
 		dao.CleanExpiredTokens()
@@ -125,7 +122,7 @@ func newSession(user string) *fosite.DefaultSession {
 }
 
 func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
-	revel.AppLog.Infof("new OAUTH2 Authorize Request from %s", req.RemoteAddr)
+	revel.AppLog.Infof("new OAuth2 Authorize Request from %s", req.RemoteAddr)
 	ctx := fosite.NewContext()
 
 	ar, err := oauth2Provider.NewAuthorizeRequest(ctx, req)
@@ -143,10 +140,15 @@ func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 		session := revel.GetSessionFromCookie(revel.GoCookie(*cook))
 
 		if user, ok := session["userid"]; ok {
+
+			//Grant every requested Scope
+			for _, scope := range ar.GetRequestedScopes() {
+				ar.GrantScope(scope)
+			}
+
 			createAuthorizeResponse(ctx, ar, rw, user)
 			return
 		}
-
 	}
 
 	// Append Parameters to Login-Page for further Redirect back to here
@@ -160,20 +162,6 @@ func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, 
 	var mySessionData *fosite.DefaultSession
 	mySessionData = &fosite.DefaultSession{Username: user}
 
-	// Now that the user is authorized, we set up a session. When validating / looking up tokens, we additionally get
-	// the session. You can store anything you want in it.
-
-	// The session will be persisted by the store and made available when e.g. validating tokens or handling token endpoint requests.
-	// The default OAuth2 and OpenID Connect handlers require the session to implement a few methods. Apart from that, the
-	// session struct can be anything you want it to be.
-
-	// scope have to be devices
-	scopes := ar.GetRequestedScopes()
-	if len(scopes) != 1 || !scopes.Exact("devices") {
-		http.Error(rw, "you're not allowed to do that", http.StatusForbidden)
-		return
-	}
-
 	// Now we need to get a response. This is the place where the AuthorizeEndpointHandlers kick in and start processing the request.
 	// NewAuthorizeResponse is capable of running multiple response type handlers which in turn enables this library
 	// to support open id connect.
@@ -182,20 +170,6 @@ func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, 
 		oauth2Provider.WriteAuthorizeError(rw, ar, err)
 		return
 	}
-
-	// Save Auth App in DB
-	dbUser := dao.GetUser(user)
-	if dbUser == nil {
-		revel.AppLog.Errorf("Logged In User %s nof found", user)
-		return
-	}
-	if dbUser.Authorizations == nil {
-		dbUser.Authorizations = []dao.AuthorizeEntry{}
-	}
-	dbUser.Authorizations = append(dbUser.Authorizations, dao.AuthorizeEntry{
-		AppID: ar.GetClient().GetID(),
-	})
-	dao.SaveUser(dbUser)
 
 	// Awesome, now we redirect back to the client redirect uri and pass along an authorize code
 	oauth2Provider.WriteAuthorizeResponse(rw, ar, response)
@@ -222,6 +196,10 @@ func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	revel.AppLog.Infof("we have to create a token for: %+v", accessRequest)
+	revel.AppLog.Infof("we have to create a token for: %+v", accessRequest.GetClient())
+	revel.AppLog.Infof("we have to create a token for: %+v", accessRequest.GetSession())
+
 	// Next we create a response for the access request. Again, we iterate through the TokenEndpointHandlers
 	// and aggregate the result in response.
 	response, err := oauth2Provider.NewAccessResponse(ctx, accessRequest)
@@ -231,7 +209,25 @@ func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	revel.AppLog.Debugf("We created a new ACCESSTOKEN for grants %+v: %s", accessRequest.GetGrantTypes(), response.GetAccessToken())
+	// if it is a token exchange, we save the id and the refresh token
+	if accessRequest.GetGrantTypes().Has("authorization_code") {
+
+		dbUser := dao.GetUser(accessRequest.GetSession().GetUsername())
+		if dbUser == nil {
+			revel.AppLog.Errorf("Logged In User %s nof found", dbUser.UserID)
+			return
+		}
+		if dbUser.Authorizations == nil {
+			dbUser.Authorizations = []dao.AuthorizeEntry{}
+		}
+		// Save Auth App and Refresh-Token in DB
+		dbUser.Authorizations = append(dbUser.Authorizations, dao.AuthorizeEntry{
+			AppID:        accessRequest.GetClient().GetID(),
+			RefreshToken: response.GetExtra("refresh_token").(string),
+		})
+		dao.SaveUser(dbUser)
+
+	}
 
 	// All done, send the response.
 	oauth2Provider.WriteAccessResponse(rw, accessRequest, response)
@@ -254,7 +250,15 @@ func IntrospectionHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 	oauth2Provider.WriteIntrospectionResponse(rw, ir)
 }
 
+// RevokationHanlderFunc
+func RevocationHandlerFunc(rw http.ResponseWriter, req *http.Request) {
+	ctx := fosite.NewContext()
+	err := oauth2Provider.NewRevocationRequest(ctx, req)
+	oauth2Provider.WriteRevocationResponse(rw, err)
+}
+
 func CheckToken(token string) (active bool, username string) {
+	// TODO: Maybe use API directly instead of using HTTP/Localhost
 
 	if ok, _ := revel.Config.Bool("oauth.checktoken"); !ok {
 		user, _ := revel.Config.String("user.admin")
@@ -291,6 +295,19 @@ func CheckToken(token string) (active bool, username string) {
 Oauth2 Storage Implementation
 */
 
+func storeToken(signature string, tokenType fosite.TokenType, request fosite.Requester) error {
+	serialized, _ := json.Marshal(request)
+	expiry := request.GetSession().GetExpiresAt(tokenType)
+	tokenid := request.GetID()
+	// refresh token expires in 10 years
+	if tokenType == fosite.RefreshToken {
+		expiry = time.Now().AddDate(10, 0, 0)
+	}
+
+	err := dao.SaveToken(signature, tokenid, tokenType, expiry, &serialized)
+	return err
+}
+
 func (c OAuthStorageAdapter) GetClient(ctx context.Context, id string) (fosite.Client, error) {
 	cl, ok := clients[id]
 	if !ok {
@@ -300,17 +317,13 @@ func (c OAuthStorageAdapter) GetClient(ctx context.Context, id string) (fosite.C
 }
 
 func (c OAuthStorageAdapter) CreateAuthorizeCodeSession(ctx context.Context, code string, request fosite.Requester) (err error) {
-	serialized, _ := json.Marshal(request)
-	revel.AppLog.Debugf("Create Auth-Request: %+v", string(serialized))
-	expiry := request.GetSession().GetExpiresAt("access_token")
-	err = dao.SaveToken(code, expiry, &serialized)
-	return err
+	return storeToken(code, fosite.AuthorizeCode, request)
 }
 
 func (c OAuthStorageAdapter) GetAuthorizeCodeSession(ctx context.Context, code string, session fosite.Session) (request fosite.Requester, err error) {
 	var result = fosite.NewAuthorizeRequest()
 	result.Session = session //result.Session == nil -> dirty Fix
-	data := dao.GetToken(code)
+	data := dao.GetTokenBySignature(code)
 	if data == nil {
 		return nil, fosite.ErrNotFound
 	}
@@ -324,15 +337,12 @@ func (c OAuthStorageAdapter) DeleteAuthorizeCodeSession(ctx context.Context, cod
 }
 
 func (c OAuthStorageAdapter) CreateAccessTokenSession(ctx context.Context, signature string, request fosite.Requester) (err error) {
-	serialized, _ := json.Marshal(request)
-	expiry := request.GetSession().GetExpiresAt("access_token")
-	err = dao.SaveToken(signature, expiry, &serialized)
-	return err
+	return storeToken(signature, fosite.AccessToken, request)
 }
 
 func (c OAuthStorageAdapter) GetAccessTokenSession(ctx context.Context, signature string, session fosite.Session) (request fosite.Requester, err error) {
 	var result = fosite.NewAccessRequest(session)
-	data := dao.GetToken(signature)
+	data := dao.GetTokenBySignature(signature)
 	if data != nil {
 		json.Unmarshal(*data, &result)
 		if data == nil {
@@ -340,17 +350,16 @@ func (c OAuthStorageAdapter) GetAccessTokenSession(ctx context.Context, signatur
 		}
 		return result, nil
 	}
-
 	return nil, fosite.ErrTokenSignatureMismatch
-
 }
 
 func (c OAuthStorageAdapter) DeleteAccessTokenSession(ctx context.Context, signature string) (err error) {
 	return c.DeleteAuthorizeCodeSession(ctx, signature)
+	// TODO: check ! delete a single accesstoken
 }
 
 func (c OAuthStorageAdapter) CreateRefreshTokenSession(ctx context.Context, signature string, request fosite.Requester) (err error) {
-	return c.CreateAccessTokenSession(ctx, signature, request)
+	return storeToken(signature, fosite.RefreshToken, request)
 }
 
 func (c OAuthStorageAdapter) GetRefreshTokenSession(ctx context.Context, signature string, session fosite.Session) (request fosite.Requester, err error) {
@@ -359,6 +368,15 @@ func (c OAuthStorageAdapter) GetRefreshTokenSession(ctx context.Context, signatu
 
 func (c OAuthStorageAdapter) DeleteRefreshTokenSession(ctx context.Context, signature string) (err error) {
 	return c.DeleteAuthorizeCodeSession(ctx, signature)
+	//TODO: check ! delete a refresh token and all access-tokens from the user
+}
+
+func (c OAuthStorageAdapter) RevokeRefreshToken(ctx context.Context, requestID string) error {
+	return dao.DeleteTokenByTokenID(requestID, fosite.RefreshToken)
+}
+
+func (c OAuthStorageAdapter) RevokeAccessToken(ctx context.Context, requestID string) error {
+	return dao.DeleteTokenByTokenID(requestID, fosite.AccessToken)
 }
 
 /*
@@ -366,17 +384,7 @@ TODO: not IMPLEMENTED
 */
 
 func (c OAuthStorageAdapter) TokenRevocationStorage(ctx context.Context, requestID string) error {
-	revel.AppLog.Infof("TokenRevocateionStorage: %+v", ctx)
-	return nil
-}
-
-func (c OAuthStorageAdapter) RevokeRefreshToken(ctx context.Context, requestID string) error {
-	revel.AppLog.Infof("RevokeRefreshToken: %+v", ctx)
-	return nil
-}
-
-func (c OAuthStorageAdapter) RevokeAccessToken(ctx context.Context, requestID string) error {
-	revel.AppLog.Infof("RevokeAccessToken: %+v", ctx)
+	revel.AppLog.Infof("TokenRevocationStorage: %+v", ctx)
 	return nil
 }
 

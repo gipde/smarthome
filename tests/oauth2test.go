@@ -39,6 +39,7 @@ func (t *OauthTest) TestOAuth2() {
 		RedirectURL:  app.PublicHost + app.ContextRoot + "/callback",
 		Scopes: []string{
 			"devices",
+			"offline", //wichtig für Refresh-Token
 		},
 		Endpoint: oauth2.Endpoint{
 			TokenURL: app.PublicHost + app.ContextRoot + "/oauth2/token",
@@ -88,26 +89,39 @@ func (t *OauthTest) TestOAuth2() {
 	if err != nil {
 		t.Assert(false)
 	}
+
 	t.Assert(tok.AccessToken != "")
+	t.Assert(tok.RefreshToken != "")
 	t.Assert(tok.Valid())
 
 	// 6. nun können wir den Token benutzen
-	revel.AppLog.Infof("ACCESSTOKEN: %s", tok.AccessToken)
+	revel.AppLog.Infof("TOKEN: %+v", tok)
 
 	// 7. wir springen hier zur Serverseite und versuchen den Token zu validieren
 	active, username := app.CheckToken(tok.AccessToken)
 	t.Assert(active == true)
 	t.Assert(username == "admin")
 
-	// 8. wir versuchen mit einem illegalen Token zu arbeiten
-	tok.AccessToken = "bn2Vu1oyGZWT9ZTQDNwCKXuD0obcIok_1MGMcFyW1zA.6ROtmbJkyMlGlstLHZb76gO0IKIJ0c2evZ17iFN5rBw"
+	// 8. wir wiederrufen den Token (Revoke)
+	// we revoke the refresh-token and all other tokens from user xy
+	revel.AppLog.Infof("We Revoke Token")
+
+	values := url.Values{"token": []string{tok.AccessToken}}.Encode()
+	post := t.PostCustom(app.PublicHost+app.ContextRoot+"/oauth2/revoke",
+		"application/x-www-form-urlencoded",
+		strings.NewReader(values))
+	post.SetBasicAuth(conf.ClientID, conf.ClientSecret)
+	post.Send()
+
+	t.AssertStatus(200)
+
+	// 9. wir versuchen mit einem illegalen Token zu arbeiten (das ist der den wir vorher widerrufen haben)
 	active, username = app.CheckToken(tok.AccessToken)
 	t.Assert(username == "")
 	t.Assert(active == false)
 
 	// 9. wir versuchen den Token zu refreshen
-
-	// 10. wir wiederrufen den Token (Revoke)
+	// ABER WIE können wir das nachstellen? Das macht die BlackBox selbständig
 
 }
 

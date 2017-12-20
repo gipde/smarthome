@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"github.com/revel/revel"
+	"golang.org/x/crypto/bcrypt"
 	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
 	"strconv"
@@ -20,7 +21,9 @@ func (c Debug) ListTokens() revel.Result {
 	for _, t := range *tokens {
 		html += "<tr>"
 		html += "<td style='border: 1px solid black;'>" + strconv.Itoa(int(t.ID)) + "</td>"
-		html += "<td style='border: 1px solid black;'>" + t.Code + "</td>"
+		html += "<td style='border: 1px solid black;'>" + t.Signature + "</td>"
+		html += "<td style='border: 1px solid black;'>" + t.TokenID + "</td>"
+		html += "<td style='border: 1px solid black;'>" + string(t.TokenType) + "</td>"
 		html += "<td style='border: 1px solid black;'>" + t.Expiry.Format(time.RFC3339) + "</td>"
 		html += "<td style='border: 1px solid black;'>" + string(t.PayLoad) + "</td>"
 		html += "</tr>"
@@ -31,4 +34,11 @@ func (c Debug) ListTokens() revel.Result {
 func (c Debug) CheckToken(token string) revel.Result {
 	valid, user := app.CheckToken(token)
 	return c.RenderText(fmt.Sprintf("active: %s\nuser: %s\n", valid, user))
+}
+
+// Function to generate a Hash from a Password
+func (c Debug) GetHash(password string) revel.Result {
+	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	retval := struct{ Password []byte }{Password: hash}
+	return c.RenderJSON(retval)
 }

@@ -1,7 +1,7 @@
 {
     "AlexaSmartHome": {
         "id": "AlexaSmartHome",
-        "client_secret": "JDJhJDEwJC40NWNYeUdKTWNLV0dYWnNGOWxpV3VWbElTakFaREZ0YVJjbmFYaHREM0JIN2tCcjZ6azJL",
+        "client_secret": "JDJhJDEwJEJDajR6SzA0V1JjY2JjaGNFckdvVS4yai5xNk5uUnR3cTZtaFdnQXhWSmpWNkJBQTdpUXht",
         "redirect_uris": [
             "https://layla.amazon.com/api/skill/link/MDPHWV94UTOJJ",
             "https://alexa.amazon.co.jp/api/skill/link/MDPHWV94UTOJJ",
@@ -17,11 +17,11 @@
         "response_types": [
             "id_token",
             "code",
-            "token",
-            "offline"
+            "token"
         ],
         "scopes": [
-            "devices"
+            "devices",
+            "offline"
         ],
         "public": false
     },

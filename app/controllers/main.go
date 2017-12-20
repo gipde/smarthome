@@ -185,13 +185,6 @@ func (c Main) getSuccessfulLoginRedirect() string {
 	return app.ContextRoot + routes.Main.Dashboard()
 }
 
-// Function to generate a Hash from a Password
-func (c Main) GetHash(password string) revel.Result {
-	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	retval := struct{ Password []byte }{Password: hash}
-	return c.RenderJSON(retval)
-}
-
 // REST Api
 func (c Main) Login(username, password string, remember bool) revel.Result {
 	dbUsr := dao.GetUser(username)

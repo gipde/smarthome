@@ -90,11 +90,13 @@ func installHandlers() {
 			serveMux := http.NewServeMux()
 			serveMux.Handle("/", revelHandler) // the old handler
 			serveMux.Handle("/oauth2/auth",
-				http.HandlerFunc(AuthorizeHandlerFunc)) // the oauth2
+				http.HandlerFunc(AuthorizeHandlerFunc)) // authentication handler
 			serveMux.Handle("/oauth2/token",
-				http.HandlerFunc(TokenHandlerFunc)) // the oauth2
+				http.HandlerFunc(TokenHandlerFunc)) // token handler (exchange,refresh,client-credentials)
 			serveMux.Handle("/oauth2/introspect",
-				http.HandlerFunc(IntrospectionHandlerFunc))
+				http.HandlerFunc(IntrospectionHandlerFunc)) // introsepct token
+			serveMux.Handle("/oauth2/revoke",
+				http.HandlerFunc(RevocationHandlerFunc)) // revoke token
 			*srvHandler = serveMux
 		}
 		return
