@@ -179,7 +179,7 @@ func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, 
 // Handler für alle Token Requests (authorize,revoke, ...)
 func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 	// revel.AppLog.Infof("new OAuth2 Token Request from %s", req.RemoteAddr)
-	DoLogHTTPRequest(req, "Auth-Handler")
+	DoLogHTTPRequest(req, "Token-Handler")
 
 	ctx := fosite.NewContext()
 
@@ -340,7 +340,7 @@ func (c OAuthStorageAdapter) GetAuthorizeCodeSession(ctx context.Context, code s
 
 func (c OAuthStorageAdapter) DeleteAuthorizeCodeSession(ctx context.Context, code string) (err error) {
 	err = dao.DeleteToken(code)
-	return err
+	return nil
 }
 
 func (c OAuthStorageAdapter) CreateAccessTokenSession(ctx context.Context, signature string, request fosite.Requester) (err error) {
