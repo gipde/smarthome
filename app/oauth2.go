@@ -122,7 +122,8 @@ func newSession(user string) *fosite.DefaultSession {
 }
 
 func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
-	revel.AppLog.Infof("new OAuth2 Authorize Request from %s", req.RemoteAddr)
+	// revel.AppLog.Infof("new OAuth2 Authorize Request from %s", req.RemoteAddr)
+	DoLogHTTPRequest(req, "Auth-Handler")
 	ctx := fosite.NewContext()
 
 	ar, err := oauth2Provider.NewAuthorizeRequest(ctx, req)
@@ -177,7 +178,9 @@ func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, 
 
 // Handler für alle Token Requests (authorize,revoke, ...)
 func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
-	revel.AppLog.Infof("new OAuth2 Token Request from %s", req.RemoteAddr)
+	// revel.AppLog.Infof("new OAuth2 Token Request from %s", req.RemoteAddr)
+	DoLogHTTPRequest(req, "Auth-Handler")
+
 	ctx := fosite.NewContext()
 
 	// Create an empty session object which will be passed to the request handlers
@@ -239,6 +242,8 @@ func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 // IntrospectionHandlerFunc
 //  we check if Token is valid
 func IntrospectionHandlerFunc(rw http.ResponseWriter, req *http.Request) {
+	DoLogHTTPRequest(req, "Introspection-Handler")
+
 	ctx := fosite.NewContext()
 	mySessionData := newSession("")
 	ir, err := oauth2Provider.NewIntrospectionRequest(ctx, req, mySessionData)
@@ -252,6 +257,8 @@ func IntrospectionHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 
 // RevokationHanlderFunc
 func RevocationHandlerFunc(rw http.ResponseWriter, req *http.Request) {
+	DoLogHTTPRequest(req, "Revocation-Handler")
+
 	ctx := fosite.NewContext()
 	err := oauth2Provider.NewRevocationRequest(ctx, req)
 	oauth2Provider.WriteRevocationResponse(rw, err)

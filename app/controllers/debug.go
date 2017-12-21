@@ -1,11 +1,9 @@
 package controllers
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/revel/revel"
 	"golang.org/x/crypto/bcrypt"
-	"io/ioutil"
 	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
 	"strconv"
@@ -47,30 +45,12 @@ func (c Debug) GetHash(password string) revel.Result {
 
 // Log a Request
 func (c Debug) LogRequest() revel.Result {
-	DoLogHTTPRequest(c.Request, "LoggingAPI Endpoint")
+	DoLogRevelRequest(c.Request, "LoggingAPI Endpoint")
 	return c.NotFound("but your Request is Logged :)")
 }
 
-func DoLogHTTPRequest(req *revel.Request, prefix string) {
+func DoLogRevelRequest(req *revel.Request, prefix string) {
 	originalHeader := req.Header.Server.(*revel.GoHeader)
 	r := originalHeader.Source.(*revel.GoRequest).Original
-	var buffer bytes.Buffer
-
-	buffer.WriteString(fmt.Sprintf("%v %v %v\n", r.Method, r.URL, r.Proto))
-	buffer.WriteString(fmt.Sprintf("Host: %v\n", r.Host))
-	for name, value := range r.Header {
-		buffer.WriteString(fmt.Sprintf("Header: %s -> %s\n", name, value))
-	}
-
-	if r.Method == "POST" {
-		r.ParseForm()
-		buffer.WriteString("\n")
-		buffer.WriteString(r.Form.Encode())
-	}
-
-	bodyBuffer, _ := ioutil.ReadAll(req.GetBody())
-	buffer.WriteString(fmt.Sprintf("Body: \n%s\n", bodyBuffer))
-
-	revel.AppLog.Infof("HTTP Request: %s\n%s", prefix, buffer.String())
-
+	app.DoLogHTTPRequest(r, prefix)
 }
