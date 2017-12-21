@@ -110,7 +110,8 @@ type Alexa struct {
 }
 
 func (c Alexa) Api(r Request) revel.Result {
-	c.Log.Debugf("API Request: %+v", r)
+	// c.Log.Debugf("API Request: %+v", r)
+	DoLogHTTPRequest(c.Request, "Alexa Api Call")
 
 	var token string
 	if r.Directive.Header.Namespace == "Alexa.Discovery" {
