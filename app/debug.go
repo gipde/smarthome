@@ -20,7 +20,7 @@ func DoLogHTTPRequest(r *http.Request, prefix string) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		buffer.WriteString("\n")
-		buffer.WriteString(r.Form.Encode())
+		buffer.WriteString(r.Form.Encode() + "\n")
 	}
 
 	bodyBuffer, _ := ioutil.ReadAll(r.Body)

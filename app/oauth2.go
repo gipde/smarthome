@@ -80,7 +80,7 @@ func initProvider() {
 	}
 	strg := OAuthStorageAdapter{}
 
-	oauthPass := randToken()
+	oauthPass, _ := revel.Config.String("oauth.signingsecret")
 	strat := compose.CommonStrategy{
 		CoreStrategy: compose.NewOAuth2HMACStrategy(&config, []byte(oauthPass)),
 	}
