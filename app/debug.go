@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// DoLogHHTPRequest logs a http Request
 func DoLogHTTPRequest(r *http.Request, prefix string) {
 	var buffer bytes.Buffer
 

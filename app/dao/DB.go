@@ -3,52 +3,14 @@ package dao
 import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/ory/fosite"
 	"github.com/revel/revel"
 	"golang.org/x/crypto/bcrypt"
-	"time"
 )
-
-type User struct {
-	gorm.Model
-	UserID         string
-	Name           string
-	Password       []byte
-	DevicePassword []byte
-	Devices        []Device
-	Authorizations []AuthorizeEntry
-}
-
-type Device struct {
-	gorm.Model
-	UserID      uint
-	Name        string
-	Description string
-	Producer    string
-	DeviceType  int
-	State       string // eg a json fragment
-	Connected   bool
-}
-
-type AuthorizeEntry struct {
-	gorm.Model
-	UserID       uint
-	AppID        string
-	RefreshToken string
-}
-
-type Token struct {
-	gorm.Model
-	Expiry    time.Time
-	TokenID   string
-	TokenType fosite.TokenType
-	Signature string
-	PayLoad   []byte
-}
 
 var Db *gorm.DB
 
 func InitDB() {
+
 	revel.AppLog.Info("Init DB")
 
 	driver, _ := revel.Config.String("db.driver")
@@ -63,6 +25,8 @@ func InitDB() {
 	if r, _ := revel.Config.Bool("db.debug"); r {
 		dbInt2 = dbInt.Debug()
 	}
+
+	// Do Migrations
 	Db = dbInt2.AutoMigrate(
 		&User{},
 		&Device{},
@@ -70,13 +34,19 @@ func InitDB() {
 		&Token{},
 	)
 
+	// Create Adminuser
 	adminuser, _ := revel.Config.String("user.admin")
 	if admin := GetUser(adminuser); admin == nil {
-		user := User{Name: adminuser, UserID: adminuser}
+		user := User{
+			Name:   adminuser,
+			UserID: adminuser,
+		}
 		user.Password, _ = bcrypt.GenerateFromPassword([]byte(adminuser), bcrypt.DefaultCost)
 		user.DevicePassword, _ = bcrypt.GenerateFromPassword([]byte(adminuser), bcrypt.DefaultCost)
 
 		Db.Create(&user)
+
+		// save Testdevices with Admin
 		user.Devices = *GetTestDevices()
 		Db.Save(&user)
 	}

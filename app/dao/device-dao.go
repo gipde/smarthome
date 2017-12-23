@@ -8,22 +8,23 @@ import (
 	"strings"
 )
 
+// GetAllDevices returns a array of all Devices
 func GetAllDevices(useroid uint) *[]Device {
 	return getAllDevicesIntern(useroid, Db)
 }
-func GetAllDevicesDeep(useroid uint) *[]Device {
-	return getAllDevicesIntern(useroid, Db)
-}
 
+// CreateDevice ...
 func CreateDevice(device *Device) {
 	revel.AppLog.Info(fmt.Sprintf("Create Device: %+v", device))
 	Db.Create(&device)
 }
 
+// DeleteDevice ...
 func DeleteDevice(device *Device) {
 	Db.Delete(&device)
 }
 
+// FindDeviceByID returns device with ID
 func FindDeviceByID(user uint, id string) *Device {
 	var device Device
 	numericID, _ := strconv.Atoi(strings.TrimPrefix(id, "device-"))
@@ -33,6 +34,7 @@ func FindDeviceByID(user uint, id string) *Device {
 	return &device
 }
 
+// SaveDevice ...
 func SaveDevice(dev *Device) {
 	Db.Save(dev)
 }

@@ -7,17 +7,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
+	"schneidernet/smarthome/app/models/alexa"
+	"schneidernet/smarthome/app/routes"
 	"strconv"
 	"time"
 )
 
+// Debug Controller
 type Debug struct {
 	*revel.Controller
 }
 
+// ListTokens list all Tokens that are issued
 func (c Debug) ListTokens() revel.Result {
 	html := "<table style='width:100%;border: 1px solid black;'>"
-	// <tr><th>ID</th><th>Payload</th></tr>"
 	tokens := dao.GetAllTokens()
 	for _, t := range *tokens {
 		html += "<tr>"
@@ -32,36 +35,64 @@ func (c Debug) ListTokens() revel.Result {
 	return c.RenderHTML(html)
 }
 
+// CheckToken verifies the validity of a token
 func (c Debug) CheckToken(token string) revel.Result {
 	valid, user := app.CheckToken(token)
-	return c.RenderText(fmt.Sprintf("active: %s\nuser: %s\n", valid, user))
+	return c.RenderText(fmt.Sprintf("active: %t\nuser: %s\n", valid, user))
 }
 
-// Function to generate a Hash from a Password
+// GetHash generates a Hash from a Password
 func (c Debug) GetHash(password string) revel.Result {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	retval := struct{ Password []byte }{Password: hash}
 	return c.RenderJSON(retval)
 }
 
+// BasicAuthEncode Encodes a username and password to base64
 func (c Debug) BasicAuthEncode(username, password string) revel.Result {
 	auth := username + ":" + password
 	return c.RenderText(base64.StdEncoding.EncodeToString([]byte(auth)))
 }
+
+// BasicAuthDecode reveals the username and password
 func (c Debug) BasicAuthDecode(credential string) revel.Result {
 	payload, _ := base64.StdEncoding.DecodeString(credential)
 	c.Log.Infof("Payload %s", payload)
 	return c.RenderText(string(payload))
 }
 
-// Log a Request
+// LogRequest pretty print a request
 func (c Debug) LogRequest() revel.Result {
 	DoLogRevelRequest(c.Request, "LoggingAPI Endpoint")
 	return c.NotFound("but your Request is Logged :)")
 }
 
+// DoLogRevelRequest ...
 func DoLogRevelRequest(req *revel.Request, prefix string) {
 	originalHeader := req.Header.Server.(*revel.GoHeader)
 	r := originalHeader.Source.(*revel.GoRequest).Original
 	app.DoLogHTTPRequest(r, prefix)
+}
+
+// Create Testdevices
+func (c Main) CreateDev() revel.Result {
+
+	usr := dao.GetUserWithID(c.getCurrentUserID())
+	if usr == nil {
+		c.Log.Info("creating users")
+		return nil
+	}
+	usr.Devices = []dao.Device{}
+
+	for i := 0; i < 10; i++ {
+		d := dao.Device{
+			Name:        "Schalter",
+			Description: "Schalter im Flur",
+			Producer:    "Werner@SchneiderNET",
+			DeviceType:  alexa.DeviceSwitch.ID(),
+		}
+		usr.Devices = append(usr.Devices, d)
+	}
+	dao.SaveUser(usr)
+	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 }

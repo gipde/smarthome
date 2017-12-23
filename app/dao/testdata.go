@@ -1,7 +1,7 @@
 package dao
 
 import (
-	"schneidernet/smarthome/app/models"
+	"schneidernet/smarthome/app/models/alexa"
 )
 
 func GetTestDevices() *[]Device {
@@ -12,12 +12,12 @@ func GetTestDevices() *[]Device {
 			Description: "Licht Küche unter der Theke",
 			Producer:    "Schneidernet",
 			DeviceType:  alexa.DeviceLight.ID(),
-			State:       "ON",
+			State:       alexa.ON,
 			Connected:   true,
 		},
 		Device{
-			Name:        "Temperatur Sensor",
-			Description: "Heizung",
+			Name:        "Warmwasser Heizung",
+			Description: "Warmwasser Temperatur der Heizung",
 			Producer:    "Schneidernet",
 			DeviceType:  alexa.DeviceTemperatureSensor.ID(),
 			State:       "35.5",
@@ -28,7 +28,7 @@ func GetTestDevices() *[]Device {
 			Description: "Heizung",
 			Producer:    "Schneidernet",
 			DeviceType:  alexa.DeviceSwitch.ID(),
-			State:       "ON",
+			State:       alexa.ON,
 			Connected:   false,
 		},
 		Device{
@@ -36,7 +36,7 @@ func GetTestDevices() *[]Device {
 			Description: "Esszimmer",
 			Producer:    "Schneidernet",
 			DeviceType:  alexa.DeviceSocket.ID(),
-			State:       "OFF",
+			State:       alexa.OFF,
 			Connected:   true,
 		},
 	}

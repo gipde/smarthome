@@ -14,7 +14,7 @@ var (
 	// BuildTime revel app build-time (ldflags)
 	BuildTime string
 
-	// App Pathes
+	// App Pathes used in the app
 	ContextRoot   string
 	WebSocketHost string
 	PublicHost    string

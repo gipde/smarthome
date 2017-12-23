@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// SaveToken saves a Token into the DB
 func SaveToken(signature, tokenid string, tokentype fosite.TokenType, expiry time.Time, payload *[]byte) error {
 	result := Db.Save(&Token{
 		Signature: signature,
@@ -24,6 +25,7 @@ func SaveToken(signature, tokenid string, tokentype fosite.TokenType, expiry tim
 	return nil
 }
 
+// GetTokenBySignature returns a Token
 func GetTokenBySignature(signature string) *[]byte {
 	var aToken Token
 	result := Db.First(&aToken, "signature = ?", signature)
@@ -33,6 +35,7 @@ func GetTokenBySignature(signature string) *[]byte {
 	return &aToken.PayLoad
 }
 
+// GetTokenByTokenID returns a Token
 func GetTokenByTokenID(tokenid string, tokentype fosite.TokenType) *[]byte {
 	var aToken Token
 	result := Db.First(&aToken, "token_id = ?  and token_type=?", tokenid, tokentype)
@@ -42,6 +45,7 @@ func GetTokenByTokenID(tokenid string, tokentype fosite.TokenType) *[]byte {
 	return &aToken.PayLoad
 }
 
+// DeleteToken removes a Token
 func DeleteToken(code string) error {
 	var token Token
 	result := Db.Delete(&token, "signature = ?", code)
@@ -51,6 +55,7 @@ func DeleteToken(code string) error {
 	return nil
 }
 
+// DeleteTokenByTokenID removes a Token
 func DeleteTokenByTokenID(tokenid string, tokentype fosite.TokenType) error {
 	var aToken Token
 	result := Db.Delete(&aToken, "token_id = ?  and token_type=?", tokenid, tokentype)
@@ -60,12 +65,14 @@ func DeleteTokenByTokenID(tokenid string, tokentype fosite.TokenType) error {
 	return nil
 }
 
+// GetAllTokens list all Tokens
 func GetAllTokens() *[]Token {
 	var tokens []Token
 	Db.Find(&tokens)
 	return &tokens
 }
 
+// ClearExpiredTokens remove expired Tokens
 func CleanExpiredTokens() {
 	var tokens Token
 	result := Db.Delete(&tokens, "Expiry < ?", time.Now().UTC())
