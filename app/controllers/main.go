@@ -418,6 +418,20 @@ func register(uoid uint) (chan string, chan string) {
 	return usertopic.input, consumer
 }
 
+func changeNotify(user uint, device *dao.Device) {
+	devname := fmt.Sprintf("device-%d", device.ID)
+	dc := DeviceCommand{
+		Device:     devname,
+		Connected:  device.Connected,
+		Command:    "STATEUPDATE",
+		State:      device.State,
+		DeviceType: device.DeviceType,
+	}
+	data, _ := json.MarshalIndent(dc, "", " ")
+	revel.AppLog.Infof("changeNotify %s", data)
+	topics[user].input <- string(data)
+}
+
 func unregister(uoid uint, consumer chan string) {
 	revel.AppLog.Infof("Unregister Consumer %v for user %s -> %v", consumer, uoid, topics[uoid])
 	usertopic := topics[uoid]

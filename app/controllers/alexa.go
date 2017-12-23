@@ -15,12 +15,17 @@ import (
 	"time"
 )
 
+/*
+TODO: ersetze ON/OFF durch Typ
+*/
+
 const rpi = "http://ds1820ws/"
 
 type Controller struct {
 	State string
 }
 
+// Alexa Request
 type Request struct {
 	Directive struct {
 		Header struct {
@@ -77,11 +82,11 @@ type StateReport struct {
 	} `json:"event"`
 }
 
-func (c Alexa) reportStateHandler(request Request, device *dao.Device) revel.Result {
+func (c Alexa) reportStateHandler(request Request, device *dao.Device, header string) revel.Result {
 	var s StateReport
 	s.Event.Endpoint.EndpointID = request.Directive.Endpoint.EndpointID
 	s.Event.Header.Namesapce = "Alexa"
-	s.Event.Header.Name = "StateReport"
+	s.Event.Header.Name = header
 	s.Event.Header.PayloadVersion = "3"
 	s.Event.Header.CorrelationToken = request.Directive.Header.CorrelationToken
 	s.Event.Header.MessageID = newUUID()
@@ -105,7 +110,7 @@ func (c Alexa) reportStateHandler(request Request, device *dao.Device) revel.Res
 			}
 			switch iface {
 			case alexa.PowerController:
-				prop.Value = "OFF" // OFF
+				prop.Value = device.State
 			case alexa.EndpointHealth:
 				prop.Value = alexa.PropEndpointHealth{Value: "OK"} // UNREACHABLE
 			case alexa.TemperatureSensor:
@@ -154,16 +159,23 @@ func (c Alexa) Api(r Request) revel.Result {
 
 	case "ReportState":
 		return c.reportStateHandler(
-			r, dao.FindDeviceByID(user.ID, r.Directive.Endpoint.EndpointID))
+			r, dao.FindDeviceByID(user.ID, r.Directive.Endpoint.EndpointID), "StateReport")
 	case "TurnOn":
-		return c.doSwitch("ON")
+		return c.switchHandler(r, user.ID, "ON", "Response")
 	case "TurnOff":
-		return c.doSwitch("OFF")
-
+		return c.switchHandler(r, user.ID, "OFF", "Response")
 	}
 	c.Response.Status = 500
-	return c.discovery(user.ID)
-	//return c.RenderText("Error")
+	return c.RenderText("Error")
+}
+
+func (c Alexa) switchHandler(request Request, useroid uint, state string, header string) revel.Result {
+	// switch state
+	device := dao.FindDeviceByID(useroid, request.Directive.Endpoint.EndpointID)
+	device.State = state
+	changeNotify(useroid, device)
+	dao.SaveDevice(device)
+	return c.reportStateHandler(request, device, header)
 }
 
 func (c Alexa) discovery(useroid uint) revel.Result {
