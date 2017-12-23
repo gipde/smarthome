@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/revel/revel"
 	"golang.org/x/crypto/bcrypt"
@@ -41,6 +42,16 @@ func (c Debug) GetHash(password string) revel.Result {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	retval := struct{ Password []byte }{Password: hash}
 	return c.RenderJSON(retval)
+}
+
+func (c Debug) BasicAuthEncode(username, password string) revel.Result {
+	auth := username + ":" + password
+	return c.RenderText(base64.StdEncoding.EncodeToString([]byte(auth)))
+}
+func (c Debug) BasicAuthDecode(credential string) revel.Result {
+	payload, _ := base64.StdEncoding.DecodeString(credential)
+	c.Log.Infof("Payload %s", payload)
+	return c.RenderText(string(payload))
 }
 
 // Log a Request

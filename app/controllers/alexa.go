@@ -67,6 +67,10 @@ type StateReport struct {
 		} `json:"header"`
 		Endpoint struct {
 			EndpointID string `json:"endpointId"`
+			Scope      struct {
+				Type  string `json:"type"`
+				Token string `json:"token"`
+			} `json:"scope"`
 		} `json:"endpoint"`
 		PayLoad interface{} `json:"payload,omitempty"`
 	} `json:"event"`
@@ -80,6 +84,8 @@ func (c Alexa) reportStateHandler(request Request, device *dao.Device) revel.Res
 	s.Event.Header.PayloadVersion = "3"
 	s.Event.Header.CorrelationToken = request.Directive.Header.CorrelationToken
 	s.Event.Header.MessageID = newUUID()
+	s.Event.Endpoint.Scope.Type = request.Directive.Endpoint.Scope.Type
+	s.Event.Endpoint.Scope.Token = request.Directive.Endpoint.Scope.Token
 
 	c.Log.Infof("Device: %+v ", *device)
 	s.Context.Properties = []Properties{}
@@ -87,16 +93,24 @@ func (c Alexa) reportStateHandler(request Request, device *dao.Device) revel.Res
 	for _, iface := range alexaInterfaces {
 		c.Log.Infof("Loop Interfaces: %+v", iface)
 
+		//TODO: context sensitive Properties
 		for _, pname := range dao.GetAlexaInterfaceProperties(iface) {
 			c.Log.Infof("Loop Properties: %+v", pname)
 			prop := Properties{
-				Namesapce: "Alexa",
-				Name:      pname,
-				Value:     "true",
-				//TODO: Value Fix
+				Namesapce:                 iface.String(),
+				Name:                      pname,
 				TimeOfSample:              time.Now().Format("2006-01-02T15:04:05.00Z"),
 				UncertaintyInMilliseconds: 100,
 			}
+			switch iface {
+			case alexa.PowerController:
+				prop.Value = "ON" // OFF
+			case alexa.EndpointHealth:
+				prop.Value = "OK" // UNREACHABLE
+			case alexa.TemperatureSensor:
+				prop.Value = "28.4" // Geschachtelt Value { value: 12.3, scale: "CELSIUS" }
+			}
+
 			s.Context.Properties = append(s.Context.Properties, prop)
 
 		}

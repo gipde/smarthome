@@ -1,0 +1,67 @@
+HTTP / 1.0 200 OK
+Content - Length: 1438
+Content - Type: application / json
+Date: Sat, 23 Dec 2017 05: 15: 37 GMT
+Set - Cookie: REVEL_FLASH = ;
+Path = /; HttpOnly
+X - Content - Type - Options: nosniff
+X - Frame - Options: SAMEORIGIN
+X - Xss - Protection: 1;
+mode = block
+
+{
+    "directive": {
+        "header": {
+            "namespace": "Alexa",
+            "name": "ReportState",
+            "payloadVersion": "3",
+            "messageId": "244e423c-e24d-4440-a657-8855278dd07f",
+            "correlationToken": "AAAAAAAAAQCaIZ3bG0hPvbWqjWky4j+4cAEAAAAAAABGXrX1xls02p4JZudUX/7fmWbjr4NaySMdxQy+Nxk/A/bb45okhaJXj4UEDphh2aqgW2T0xgweqPKuibgH28OrgtKh9fRMiV+9/+968E3/ZupkAF+3ni4mWbIGu77wbrqSMpw2uLWlVEATqmejgKZalJ2CranJMZrULu+LyaGvFuzD65rllSVoRRywuRLxOZiNxpLg4gsyx/vkF4pR5mF0eT61m0Bx1RCZSHqUJNUH3gwuCH30JjienQhvpfq2/6HE9kPZQVN9XMcYirmWorXW+eCKSanMUFrhF0LzgA9jar/4sOCXBXvC87exCKt+7EJKqCOLKi4Co1Lr9uALQwVbHvh24lbGvZZ25TalnCr1rXV4ZeKTK0vdZpdqt16Nrk5ai18KN4RvyY0si1MYwwoCy7CT8un+77WUMB2tmV6/2UbsV8+eH0GnJl8ekppxnKAKZSrMLwhCurh9/fbyzFhJpo9wDglO/4IeKJIkHO0rvg=="
+        },
+        "endpoint": {
+            "scope": {
+                "type": "BearerToken",
+                "token": "JX9xAPn0Ba9Ez8XG6K9JEfjChF12LMIt6CdJPqgEnCY.eOye-W-FTG86bnG5o9xheoZBU8-Uk3SuPE0Vzemt0Vo"
+            },
+            "endpointId": "device-001",
+            "cookie": {}
+        },
+        "payload": {}
+    }
+}
+
+{
+    "context": {
+        "properties": [{
+                "namespace": "Alexa.EndpointHealth",
+                "name": "connectivity",
+                "value": "OK",
+                "timeOfSample": "2017-12-23T06:15:41.45Z",
+                "uncertainityInMilliseconds": 100
+            },
+            {
+                "namespace": "Alexa.PowerController",
+                "name": "powerState",
+                "value": "ON",
+                "timeOfSample": "2017-12-23T06:15:41.45Z",
+                "uncertainityInMilliseconds": 100
+            }
+        ]
+    },
+    "event": {
+        "header": {
+            "namespace": "Alexa",
+            "name": "StateReport",
+            "payloadVersion": "3",
+            "messageId": "cf301837-6f85-4aea-98bb-e5632bb03c5f",
+            "correlationToken": "AAAAAAAAAQCaIZ3bG0hPvbWqjWky4j+4cAEAAAAAAABVAbYHsh7mzcxjpcOqLuOXDP2zlkORvMEPA+rNoxmzO+CvUwBtCek1ba/pBrxNdmM95USjZIYuHbgWOzqtJyEteGxCzRLnLz0iBaXQVp76Gy6zEpB8aKVgnm1ICvRBnKbwWxESqtwwULy9HTnAHQAkLCZIkCOgoedr98PNNJgJ87JPZZPZowd/Z47HhLdZOhAqb0cv0E1UUF4VMOV81XhsYDid13MA4LEyFBpGPgyheJv4KY43J51otAv9F/bixm/zT16J/nofD/wx98AzQ2shlW0hRrdbLazs/Gp8s9oK/ltDNOTbiPJW+DM0s6kWEAtcAELPSAR635ccJZxmo+Oaj5eqeYDcb1fBVVuORmwnfeE3lpOjHitSujBd+M6OGID6hC8XvofW1xOYosiZTissPH5TMlUHNIGlO+X4XWlMu8bA9itvk7JuYM30JTUsb4Og/z6Q9iqEUoxKJx8zNLs0NwNyvInn8SVbg8loopihmg=="
+        },
+        "endpoint": {
+            "endpointId": "device-001",
+            "scope": {
+                "type": "BearerToken",
+                "token": "JX9xAPn0Ba9Ez8XG6K9JEfjChF12LMIt6CdJPqgEnCY.eOye-W-FTG86bnG5o9xheoZBU8-Uk3SuPE0Vzemt0Vo"
+            }
+        }
+    }
+}

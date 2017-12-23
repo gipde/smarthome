@@ -75,8 +75,8 @@ func initOauth2() {
 func initProvider() {
 	// Init Oauth2provider
 	config := compose.Config{
-		AuthorizeCodeLifespan: time.Minute * 5,
-		AccessTokenLifespan:   time.Minute * 10,
+	// AuthorizeCodeLifespan: time.Minute * 60,
+	// AccessTokenLifespan:   time.Minute * 60,
 	}
 	strg := OAuthStorageAdapter{}
 
@@ -379,11 +379,13 @@ func (c OAuthStorageAdapter) DeleteRefreshTokenSession(ctx context.Context, sign
 }
 
 func (c OAuthStorageAdapter) RevokeRefreshToken(ctx context.Context, requestID string) error {
-	return dao.DeleteTokenByTokenID(requestID, fosite.RefreshToken)
+	dao.DeleteTokenByTokenID(requestID, fosite.RefreshToken)
+	return nil
 }
 
 func (c OAuthStorageAdapter) RevokeAccessToken(ctx context.Context, requestID string) error {
-	return dao.DeleteTokenByTokenID(requestID, fosite.AccessToken)
+	dao.DeleteTokenByTokenID(requestID, fosite.AccessToken)
+	return nil
 }
 
 /*
