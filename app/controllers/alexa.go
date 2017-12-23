@@ -51,7 +51,7 @@ type Properties struct {
 	Name                      string      `json:"name"`
 	Value                     interface{} `json:"value"`
 	TimeOfSample              string      `json:"timeOfSample"`
-	UncertaintyInMilliseconds int         `json:"uncertainityInMilliseconds"`
+	UncertaintyInMilliseconds int         `json:"uncertaintyInMilliseconds"`
 }
 type StateReport struct {
 	Context struct {
@@ -72,7 +72,8 @@ type StateReport struct {
 				Token string `json:"token"`
 			} `json:"scope"`
 		} `json:"endpoint"`
-		PayLoad interface{} `json:"payload,omitempty"`
+		PayLoad struct {
+		} `json:"payload"`
 	} `json:"event"`
 }
 
@@ -100,13 +101,13 @@ func (c Alexa) reportStateHandler(request Request, device *dao.Device) revel.Res
 				Namesapce:                 iface.String(),
 				Name:                      pname,
 				TimeOfSample:              time.Now().Format("2006-01-02T15:04:05.00Z"),
-				UncertaintyInMilliseconds: 100,
+				UncertaintyInMilliseconds: 500,
 			}
 			switch iface {
 			case alexa.PowerController:
-				prop.Value = "ON" // OFF
+				prop.Value = "OFF" // OFF
 			case alexa.EndpointHealth:
-				prop.Value = "OK" // UNREACHABLE
+				prop.Value = alexa.PropEndpointHealth{Value: "OK"} // UNREACHABLE
 			case alexa.TemperatureSensor:
 				prop.Value = "28.4" // Geschachtelt Value { value: 12.3, scale: "CELSIUS" }
 			}

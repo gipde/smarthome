@@ -197,11 +197,12 @@ type Property struct {
 	Name string `json:"name"`
 }
 
-type Brightness struct {
+// nur geschachtelte Properties
+type PropBrightness struct {
 	Value string `json:"value"`
 }
 
-type Channel struct {
+type PropChannel struct {
 	Value struct {
 		Number            string `json:"number"`
 		CallSign          string `json:"callSign"`
@@ -209,7 +210,7 @@ type Channel struct {
 	} `json:"value"`
 }
 
-type Color struct {
+type PropColor struct {
 	Value struct {
 		Hue        float32 `json:"hue"`
 		Saturation float32 `json:"saturation"`
@@ -217,50 +218,54 @@ type Color struct {
 	} `json:"value"`
 }
 
-type ColorTemperatureInKelvin struct {
+type PropColorTemperatureInKelvin struct {
 	Value int `json:"value"`
 }
 
-type Connectivity struct {
+type PropConnectivity struct {
 	Value struct {
 		Value string `json:"value"`
 	} `json:"value"`
 }
 
-type Input struct {
+type PropInput struct {
 	Value string `json:"value"`
 }
 
-type LockSstate struct {
+type PropLockSstate struct {
 	Value string `json:"value"`
 }
 
-type MuteState struct {
+type PropMuteState struct {
 	Value bool `json:"value"`
 }
 
-type Percentage struct {
+type PropPercentage struct {
 	Value int `json:"value"`
 }
 
-type PowerState struct {
-	Value string `json:"value"`
-}
+// type PropPowerState struct {
+// 	Value string `json:"value"`
+// }
 
-type Temperature struct {
+type PropTemperature struct {
 	Value struct {
 		Value float32 `json:"value"`
 		Scale string  `json:"scale"`
 	} `json:"value"`
 }
 
-type ThermostatMode struct {
+type PropThermostatMode struct {
 	Value      string `json:"value"`
 	CustomName string `json:"customName,omitempty"`
 }
 
-type VolumeLevel struct {
+type PropVolumeLevel struct {
 	Volume string `json:"volume"`
+}
+
+type PropEndpointHealth struct {
+	Value string `json:"value"`
 }
 
 func NewProperties(vals []string) []Property {
