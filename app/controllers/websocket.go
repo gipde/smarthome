@@ -4,112 +4,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"schneidernet/smarthome/app/models/alexa"
-	"time"
-	// "fmt"
 	"github.com/revel/revel"
 	"schneidernet/smarthome/app/dao"
-	// "schneidernet/smarthome/app/models/alexa"
+	"schneidernet/smarthome/app/models/alexa"
 	"schneidernet/smarthome/app/models/devcom"
 	"strings"
+	"time"
 )
-
-// Internal Message Consumer
-type StateTopic struct {
-	Input    chan devcom.DevProto
-	Consumer [](chan devcom.DevProto)
-}
-
-// Global Topics-Map per useroid
-var topics = make(map[uint]*StateTopic)
-
-// register new User for his topic
-func register(uoid uint) (chan devcom.DevProto, chan devcom.DevProto) {
-	if _, ok := topics[uoid]; !ok {
-		// we create a new StateTopic
-		topic := StateTopic{
-			Input:    make(chan devcom.DevProto),
-			Consumer: [](chan devcom.DevProto){},
-		}
-		topics[uoid] = &topic
-
-		// and start a per user TopicHandler
-		topicHandler(&topic)
-	}
-
-	usertopic := topics[uoid]
-	// we add a consumer
-	consumer := make(chan devcom.DevProto)
-	usertopic.Consumer = append(usertopic.Consumer, consumer)
-
-	return usertopic.Input, consumer
-}
-
-// unregister user from his topic
-func unregister(uoid uint, consumer chan devcom.DevProto) {
-	usertopic := topics[uoid]
-
-	for i, c := range usertopic.Consumer {
-		if c == consumer {
-			// send the consumer the Quit Command and close it
-			c <- devcom.DevProto{Action: devcom.Quit}
-			close(c)
-
-			// remove the Consumer
-			usertopic.Consumer = append(usertopic.Consumer[:i], usertopic.Consumer[i+1:]...)
-		}
-	}
-
-	// if this was the last consumer
-	if len(usertopic.Consumer) == 0 {
-		// we can send quit to the usertopic and close the usertopic
-		usertopic.Input <- devcom.DevProto{Action: devcom.Quit}
-		close(usertopic.Input)
-		// delete the complete usertopic
-		delete(topics, uoid)
-	}
-}
-
-// the topicHandler
-func topicHandler(stateTopic *StateTopic) {
-	// start goroutine and loop forever
-	go func() {
-		for {
-			msg := <-stateTopic.Input
-			if msg.Action == devcom.Quit {
-				// exit loop
-				break
-			}
-			// send to every consumer
-			for _, consumer := range stateTopic.Consumer {
-				consumer <- msg
-			}
-		}
-	}()
-}
-
-// the consumerHandler for every Consumer
-func consumerHandler(ws revel.ServerWebSocket, consumer chan devcom.DevProto) {
-	//internal Receiver from StateTopic loop forever
-	go func() {
-		for {
-			msg := <-consumer
-			// after here, it is possible that WebSocketController is disabled
-			if msg.Action == devcom.Quit {
-				break
-			}
-
-			// send to Websocket
-			// var devState = devcom.DevProto{}
-			// json.Unmarshal([]byte(msg), &devState)
-			err := ws.MessageSendJSON(&msg)
-
-			if err != nil {
-				break
-			}
-		}
-	}()
-}
 
 /*
 Das Websocket empfängt Nachrichten von den Clients und sendet wieder
@@ -126,6 +27,9 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
 	consumerHandler(ws, consumer)
 
+	// connection state
+	connected := make(map[uint]bool)
+
 	//external Receiver from Websocket
 	for {
 		var msg string
@@ -141,9 +45,6 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		if err != nil {
 			c.Log.Errorf("Error in conversion %v", err)
 		}
-
-		// dev := dao.FindDeviceByID(c.getCurrentUserID(), incoming.Device.Name)
-		// incoming.DeviceType = dev.DeviceType
 
 		switch incoming.Action {
 
@@ -177,28 +78,42 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 			ws.MessageSendJSON(convertToDevcom(dbdev, devcom.StateResponse))
 
 		case devcom.SetState:
-			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) {
+			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
 				device.State = fmt.Sprintf("%v", incoming.PayLoad)
+				return true
 			})
 
 		case devcom.FlipState:
-			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) {
-				switch device.State {
-				case alexa.ON:
-					device.State = alexa.OFF
-				case alexa.OFF:
-					device.State = alexa.ON
+			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
+				// only for conected devices
+				if device.Connected {
+					switch device.State {
+					case alexa.ON:
+						device.State = alexa.OFF
+					case alexa.OFF:
+						device.State = alexa.ON
+					}
+					return true
 				}
+				return false
 			})
 
 		case devcom.Connect:
-			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) {
+			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
 				device.Connected = true
+				if _, ok := connected[device.ID]; ok {
+					c.Log.Error("Device already connected - cannot connect")
+					return false
+				}
+				connected[device.ID] = true
+				return true
 			})
 
 		case devcom.Disconnect:
-			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) {
+			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
 				device.Connected = false
+				delete(connected, device.ID)
+				return true
 			})
 		}
 
@@ -207,18 +122,27 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		}
 	}
 
+	// if this was the connetion how has directly connected to the device -> disconnect and notify
+	for k, v := range connected {
+		if v {
+			dbdev := dao.GetDevice(c.getCurrentUserID(), k)
+			dbdev.Connected = false
+			topics[c.getCurrentUserID()].Input <- *convertToDevcom(dbdev, devcom.StateUpdate)
+			dao.SaveDevice(dbdev)
+		}
+	}
+
 	unregister(c.getCurrentUserID(), consumer)
 	return nil
 }
 
-func setState(ws *revel.ServerWebSocket, incoming devcom.DevProto, useroid uint, payloadhdl func(device *dao.Device)) {
+func setState(ws *revel.ServerWebSocket, incoming devcom.DevProto, useroid uint, payloadhdl func(device *dao.Device) bool) {
 	dbdev := dao.FindDeviceByID(useroid, incoming.Device.ID)
-	payloadhdl(dbdev)
-
-	dao.SaveDevice(dbdev)
-	// send to all Consumers
-	topics[useroid].Input <- *convertToDevcom(dbdev, devcom.StateUpdate)
-
+	if payloadhdl(dbdev) {
+		dao.SaveDevice(dbdev)
+		// send to all Consumers
+		topics[useroid].Input <- *convertToDevcom(dbdev, devcom.StateUpdate)
+	}
 }
 
 func convertToDevcom(dbdev *dao.Device, action string) *devcom.DevProto {

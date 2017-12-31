@@ -35,6 +35,12 @@ func FindDeviceByID(user uint, id string) *Device {
 	return &device
 }
 
+func GetDevice(user uint, id uint) *Device {
+	var device Device
+	Db.Find(&device, id)
+	return &device
+}
+
 // SaveDevice ...
 func SaveDevice(dev *Device) {
 	Db.Save(dev)
