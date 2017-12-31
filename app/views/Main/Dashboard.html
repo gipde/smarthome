@@ -33,8 +33,10 @@
             var callbackhandler = function() {
                 $(".circle").click(function() {
                     transmit = {
-                        "Command": "CLICK",
-                        "Device": $(this)[0].id
+                        "action": "FlipState",
+                        "device": {
+                            "id": $(this)[0].id
+                        }
                     }
                     socket.send(JSON.stringify(transmit))
                 });
@@ -44,8 +46,10 @@
             var loadhandler = function() {
                 $(".circle").each(function(index) {
                     socket.send(JSON.stringify({
-                        "Command": "GETSTATE",
-                        "Device": $(this)[0].id
+                        "Action": "RequestState",
+                        "Device": {
+                            "ID": $(this)[0].id
+                        }
                     }))
                 });
             };
@@ -56,70 +60,73 @@
                 socket.onmessage = function(event) {
                     state = JSON.parse(event.data)
                     console.log(state)
-                    switch (state.Command) {
-                        case "STATEUPDATE": //fall through
-                        case "STATERESPONSE":
+                    devid = state.device.id
+                    switch (state.action) {
+                        case "StateUpdate": //fall through
+                        case "StateResponse":
 
                             // Text
-                            $("#" + state.Device).html(state.State)
+                            $("#" + devid).html(state.payload)
 
                             // State-Border
-                            if (state.Connected) {
-                                $("#" + state.Device).addClass("connected")
+                            if (state.device.connected) {
+                                $("#" + devid).addClass("connected")
 
                             } else {
-                                $("#" + state.Device).removeClass("connected")
+                                $("#" + devid).removeClass("connected")
                             }
 
-                            switch (state.DeviceType) {
+                            switch (state.device.devicetype) {
                                 case 0:
                                     //socket
-                                    console.log("we process for a socket a " + state.State)
-                                    if (state.State == "ON") {
-                                        $("#" + state.Device).html(function() {
+                                    console.log("we process for a socket a " + state.payload)
+                                    if (state.payload == "ON") {
+                                        $("#" + devid).html(function() {
                                             return '<img src="{{.contextRoot}}/public/img/socket_on.svg" width="30" height="30"/>'
                                         });
-                                        $("#" + state.Device).addClass("switchedOn");
+                                        $("#" + devid).addClass("switchedOn");
                                     } else {
-                                        $("#" + state.Device).html(function() {
+                                        $("#" + devid).html(function() {
                                             return '<img src="{{.contextRoot}}/public/img/socket_off.svg" width="35" height="35"/>'
                                         });
-                                        $("#" + state.Device).removeClass("switchedOn");
+                                        $("#" + devid).removeClass("switchedOn");
                                     }
                                     break;
                                 case 1:
                                     //switch
-                                    console.log("we process for a socket a " + state.State)
-                                    if (state.State == "ON") {
-                                        $("#" + state.Device).html(function() {
+                                    console.log("we process for a switch a " + state.payload)
+                                    if (state.payload == "ON") {
+                                        $("#" + devid).html(function() {
                                             return '<img src="{{.contextRoot}}/public/img/switch_on.svg" width="40" height="40"/>'
                                         });
-                                        $("#" + state.Device).addClass("switchedOn");
+                                        $("#" + devid).addClass("switchedOn");
                                     } else {
-                                        $("#" + state.Device).html(function() {
+                                        $("#" + devid).html(function() {
                                             return '<img src="{{.contextRoot}}/public/img/switch_off.svg" width="40" height="40"/>'
                                         });
-                                        $("#" + state.Device).removeClass("switchedOn");
+                                        $("#" + devid).removeClass("switchedOn");
                                     }
                                     break;
                                 case 2:
                                     // bulb
-                                    if (state.State == "ON") {
-                                        $("#" + state.Device).addClass("switchedOn");
-                                        $("#" + state.Device).html(function() {
+                                    console.log("we process for a bulb " + state.payload)
+
+                                    if (state.payload == "ON") {
+                                        $("#" + devid).addClass("switchedOn");
+                                        $("#" + devid).html(function() {
                                             return '<img src="{{.contextRoot}}/public/img/bulb_on.svg" width="30" height="30"/>'
                                         });
                                     } else {
-                                        $("#" + state.Device).html(function() {
+                                        $("#" + devid).html(function() {
                                             return '<img src="{{.contextRoot}}/public/img/bulb_off.svg" width="30" height="30"/>'
                                         });
-                                        $("#" + state.Device).removeClass("switchedOn");
+                                        $("#" + devid).removeClass("switchedOn");
                                     }
                                     break;
                                 case 3:
                                     // thermo
-                                    $("#" + state.Device).html(function() {
-                                        return '<img src="{{.contextRoot}}/public/img/thermo.svg" width="25" height="25"/>' + state.State
+                                    $("#" + devid).html(function() {
+                                        return '<img src="{{.contextRoot}}/public/img/thermo.svg" width="25" height="25"/>' + state.payload
                                     });
                                     break
                             }

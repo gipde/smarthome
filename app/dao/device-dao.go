@@ -29,6 +29,7 @@ func FindDeviceByID(user uint, id string) *Device {
 	var device Device
 	numericID, _ := strconv.Atoi(strings.TrimPrefix(id, "device-"))
 
+	revel.AppLog.Debugf("Find Devices for User %d and id %d", user, numericID)
 	Db.Where("user_id = ?", user).Find(&device, numericID)
 
 	return &device
@@ -43,4 +44,8 @@ func getAllDevicesIntern(useroid uint, db *gorm.DB) *[]Device {
 	var devices []Device
 	db.Where("user_id = ?", useroid).Find(&devices)
 	return &devices
+}
+
+func (d *Device) FQID() string {
+	return "device-" + strconv.Itoa(int(d.ID))
 }

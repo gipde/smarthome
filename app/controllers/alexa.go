@@ -7,6 +7,7 @@ import (
 	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
 	"schneidernet/smarthome/app/models/alexa"
+	"schneidernet/smarthome/app/models/devcom"
 	"time"
 )
 
@@ -114,7 +115,7 @@ func (c Alexa) reportStateHandler(request *alexa.Request, device *dao.Device, he
 // switch Handler
 func (c Alexa) switchHandler(request *alexa.Request, useroid uint, device *dao.Device, state string, headerName string) revel.Result {
 	device.State = state
-	notifyStateUpdate(useroid, device)
+	topics[useroid].Input <- *convertToDevcom(device, devcom.StateUpdate)
 
 	dao.SaveDevice(device)
 	return c.reportStateHandler(request, device, headerName)
