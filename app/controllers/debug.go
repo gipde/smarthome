@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"github.com/revel/revel"
 	"golang.org/x/crypto/bcrypt"
+	"runtime/pprof"
 	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
 	"schneidernet/smarthome/app/models/alexa"
@@ -95,4 +97,10 @@ func (c Main) CreateDev() revel.Result {
 	}
 	dao.SaveUser(usr)
 	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
+}
+
+func (c Debug) ListGoroutines() revel.Result {
+	buf := new(bytes.Buffer)
+	pprof.Lookup("goroutine").WriteTo(buf, 1)
+	return c.RenderText(buf.String())
 }

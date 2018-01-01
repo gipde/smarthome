@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"errors"
 	"github.com/revel/revel"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -10,13 +9,13 @@ import (
 	"schneidernet/smarthome/app/models/alexa"
 	"schneidernet/smarthome/app/routes"
 	"strconv"
-	"strings"
 	"time"
 )
 
 /*
 TODO:
 - delete username from session
+- IDEA: if first login -> set and display random device-password
 */
 
 // Constants
@@ -242,31 +241,6 @@ func (c Main) getSuccessfulLoginRedirect() string {
 
 	// Default after Login
 	return app.ContextRoot + routes.Main.Dashboard()
-}
-
-// check if user has permission for websocket
-func (c Main) checkWebsocketBasicAuth() revel.Result {
-
-	auth := c.Request.Header.Get("Authorization")
-	if auth != "" {
-
-		// Split up the string to get just the data, then get the credentials
-		username, password, err := getCredentials(strings.Split(auth, " ")[1])
-		if err != nil {
-			return c.RenderError(err)
-		}
-
-		dbUsr := dao.GetUser(username)
-		if dbUsr != nil {
-			err := bcrypt.CompareHashAndPassword(dbUsr.DevicePassword, []byte(password))
-			if err == nil {
-				c.setSession(strconv.Itoa(int(dbUsr.ID)), dbUsr.UserID)
-				return nil
-			}
-		}
-	}
-
-	return c.RenderError(errors.New("401: Not authorized"))
 }
 
 // Set the Session Info

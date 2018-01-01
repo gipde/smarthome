@@ -3,11 +3,14 @@ package controllers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/revel/revel"
+	"golang.org/x/crypto/bcrypt"
 	"schneidernet/smarthome/app/dao"
 	"schneidernet/smarthome/app/models/alexa"
 	"schneidernet/smarthome/app/models/devcom"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -18,6 +21,33 @@ welche zurück.
 Das Rendering ist grundsätzlich Aufgabe des Clients selbst
 
 */
+
+// check if user has permission for websocket
+func (c Main) checkWebsocketBasicAuth() revel.Result {
+
+	auth := c.Request.Header.Get("Authorization")
+	if auth != "" {
+
+		// Split up the string to get just the data, then get the credentials
+		username, password, err := getCredentials(strings.Split(auth, " ")[1])
+		if err != nil {
+			return c.RenderError(err)
+		}
+
+		dbUsr := dao.GetUser(username)
+		if dbUsr != nil {
+			err := bcrypt.CompareHashAndPassword(dbUsr.DevicePassword, []byte(password))
+			if err == nil {
+				c.setSession(strconv.Itoa(int(dbUsr.ID)), dbUsr.UserID)
+				return nil
+			}
+		}
+	}
+
+	return c.RenderError(errors.New("401: Not authorized"))
+}
+
+// DeviceFeed is the Main-Entry for Websocket
 func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
 	usertopic, consumer := register(c.getCurrentUserID())
@@ -75,6 +105,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
 		case devcom.RequestState:
 			dbdev := dao.FindDeviceByID(c.getCurrentUserID(), incoming.Device.ID)
+			c.Log.Debug("Send back State")
 			ws.MessageSendJSON(convertToDevcom(dbdev, devcom.StateResponse))
 
 		case devcom.SetState:
@@ -86,16 +117,13 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		case devcom.FlipState:
 			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
 				// only for conected devices
-				if device.Connected {
-					switch device.State {
-					case alexa.ON:
-						device.State = alexa.OFF
-					case alexa.OFF:
-						device.State = alexa.ON
-					}
-					return true
+				switch device.State {
+				case alexa.ON:
+					device.State = alexa.OFF
+				case alexa.OFF:
+					device.State = alexa.ON
 				}
-				return false
+				return true
 			})
 
 		case devcom.Connect:
@@ -122,7 +150,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		}
 	}
 
-	// if this was the connetion how has directly connected to the device -> disconnect and notify
+	// if this was the connetion who has directly connected to the device -> disconnect and notify
 	for k, v := range connected {
 		if v {
 			dbdev := dao.GetDevice(c.getCurrentUserID(), k)
@@ -138,7 +166,8 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
 func setState(ws *revel.ServerWebSocket, incoming devcom.DevProto, useroid uint, payloadhdl func(device *dao.Device) bool) {
 	dbdev := dao.FindDeviceByID(useroid, incoming.Device.ID)
-	if payloadhdl(dbdev) {
+	// save only if device is connected and hdl returns true
+	if payloadhdl(dbdev) && dbdev.Connected {
 		dao.SaveDevice(dbdev)
 		// send to all Consumers
 		topics[useroid].Input <- *convertToDevcom(dbdev, devcom.StateUpdate)
