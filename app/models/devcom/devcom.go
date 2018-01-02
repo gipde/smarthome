@@ -30,6 +30,4 @@ const (
 
 	ListeDevices = "ListDevices"
 	DeviceList   = "DeviceList"
-
-	Quit = "Quit"
 )

@@ -104,3 +104,16 @@ func (c Debug) ListGoroutines() revel.Result {
 	pprof.Lookup("goroutine").WriteTo(buf, 1)
 	return c.RenderText(buf.String())
 }
+
+func (c Debug) ListStateTopic() revel.Result {
+	result := fmt.Sprintf("Topics Overall: %d\n", len(topics))
+	for k, v := range topics {
+		result += fmt.Sprintf("Topic for user %d = %+v\n", k, v.Input)
+		result += fmt.Sprintf("Consumer: \n")
+		for i, c := range v.Consumer {
+			result += fmt.Sprintf("  %d. Consumer: %+v\n", i, c)
+		}
+		result += "\n"
+	}
+	return c.RenderText(result)
+}

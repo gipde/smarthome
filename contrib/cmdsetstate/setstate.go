@@ -6,7 +6,6 @@ import (
 	"golang.org/x/net/websocket"
 	"log"
 	"schneidernet/smarthome/app/models/devcom"
-	// "time"
 )
 
 func basicAuth(username, password string) string {
@@ -21,10 +20,10 @@ func main() {
 	pass := flag.String("pass", "", "password for accessing device")
 	dev := flag.String("device", "", "device")
 	state := flag.String("state", "", "state")
-
 	flag.Parse()
 
-	println("Connecting to" + *url)
+	log.Println("Connecting to" + *url)
+
 	config, _ := websocket.NewConfig(*url, "http://localhost/")
 	config.Header.Add("Authorization", "Basic "+basicAuth(*user, *pass))
 	ws, err := websocket.DialConfig(config)
@@ -32,13 +31,31 @@ func main() {
 		log.Fatal(err)
 	}
 	defer ws.Close()
-	log.Println("Sending Connect...")
-	err = websocket.JSON.Send(ws, &devcom.DevProto{
+
+	sendToWebsocket(ws, &devcom.DevProto{
 		Action: devcom.Connect,
 		Device: devcom.Device{
 			ID: *dev,
 		},
 	})
+
+	sendToWebsocket(ws, &devcom.DevProto{
+		Action: devcom.SetState,
+		Device: devcom.Device{
+			ID: *dev,
+		},
+		PayLoad: state,
+	})
+
+}
+
+func sendToWebsocket(ws *websocket.Conn, command *devcom.DevProto) {
+	log.Println("Sending...")
+	err := websocket.JSON.Send(ws, command)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	var incoming interface{}
 	err = websocket.JSON.Receive(ws, &incoming)
 
@@ -46,27 +63,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("incoming: %+v\n", incoming)
-	// time.Sleep(1 * time.Second)
-	log.Println("Sending State...")
-	err = websocket.JSON.Send(ws, &devcom.DevProto{
-		Action: devcom.SetState,
-		Device: devcom.Device{
-			ID: *dev,
-		},
-		PayLoad: state,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// err = websocket.JSON.Receive(ws, &incoming)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	log.Printf("incoming: %+v\n", incoming)
-
-	// time.Sleep(1 * time.Second)
+	log.Printf("response: %+v\n", incoming)
 
 }

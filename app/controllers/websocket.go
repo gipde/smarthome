@@ -51,22 +51,21 @@ func (c Main) checkWebsocketBasicAuth() revel.Result {
 func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
 	usertopic, consumer := register(c.getCurrentUserID())
+	c.Log.Debugf("Starting Websocket: %+v", usertopic)
 
-	c.Log.Debugf("%+v", usertopic)
-	// TODO: set connected-Flag on Websocket Connection from Device not from browser
-
-	consumerHandler(ws, consumer)
+	// start consumer-handler
+	consumerHandler(ws, consumer, c.getCurrentUserID())
 
 	// connection state
-	connected := make(map[uint]bool)
+	primaryConnector := make(map[uint]bool)
 
 	//external Receiver from Websocket
 	for {
 		var msg string
 		err := ws.MessageReceiveJSON(&msg)
-		c.Log.Debugf("%+v -> %s", ws, msg)
+		c.Log.Debugf("Received Message %+v -> %s", ws, msg)
 		if err != nil {
-			c.Log.Errorf("we got a error %v", err)
+			c.Log.Debug("we got a error on Receiving from Websocket %v", err)
 			break
 		}
 
@@ -129,38 +128,38 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		case devcom.Connect:
 			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
 				device.Connected = true
-				if _, ok := connected[device.ID]; ok {
+				if _, ok := primaryConnector[device.ID]; ok {
 					c.Log.Error("Device already connected - cannot connect")
 					return false
 				}
-				connected[device.ID] = true
+				primaryConnector[device.ID] = true
 				return true
 			})
 
 		case devcom.Disconnect:
 			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
 				device.Connected = false
-				delete(connected, device.ID)
+				delete(primaryConnector, device.ID)
 				return true
 			})
 		}
 
-		if err != nil {
-			break
-		}
 	}
 
+	// loop over all entries in primaryConnecotr (per device)
 	// if this was the connetion who has directly connected to the device -> disconnect and notify
-	for k, v := range connected {
+	for k, v := range primaryConnector {
 		if v {
+			c.Log.Debug("Primary Connector closed, inform other")
 			dbdev := dao.GetDevice(c.getCurrentUserID(), k)
 			dbdev.Connected = false
-			topics[c.getCurrentUserID()].Input <- *convertToDevcom(dbdev, devcom.StateUpdate)
+			notifyAlLConsumer(c.getCurrentUserID(), convertToDevcom(dbdev, devcom.StateUpdate))
 			dao.SaveDevice(dbdev)
 		}
 	}
 
 	unregister(c.getCurrentUserID(), consumer)
+	c.Log.Debugf("Quit Websocket: %+v", ws)
 	return nil
 }
 
@@ -170,7 +169,7 @@ func setState(ws *revel.ServerWebSocket, incoming devcom.DevProto, useroid uint,
 	if payloadhdl(dbdev) && dbdev.Connected {
 		dao.SaveDevice(dbdev)
 		// send to all Consumers
-		topics[useroid].Input <- *convertToDevcom(dbdev, devcom.StateUpdate)
+		notifyAlLConsumer(useroid, convertToDevcom(dbdev, devcom.StateUpdate))
 	}
 }
 

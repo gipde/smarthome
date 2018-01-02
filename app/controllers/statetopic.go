@@ -3,12 +3,18 @@ package controllers
 import (
 	"github.com/revel/revel"
 	"schneidernet/smarthome/app/models/devcom"
+	"sync"
 )
 
-// Internal Message Consumer
+var log = revel.RootLog.New("module", "state")
+
+// Internal Message Consumer per User
+// for notifying all connected clients
 type StateTopic struct {
-	Input    chan devcom.DevProto
-	Consumer [](chan devcom.DevProto)
+	Input         chan devcom.DevProto
+	Consumer      [](chan devcom.DevProto)
+	TopicMutex    *sync.Mutex
+	ConsumerMutex *sync.Mutex
 }
 
 // Global Topics-Map per useroid
@@ -16,11 +22,14 @@ var topics = make(map[uint]*StateTopic)
 
 // register new User for his topic
 func register(uoid uint) (chan devcom.DevProto, chan devcom.DevProto) {
+	log.Debug("register user for topic", "uioid", uoid)
 	if _, ok := topics[uoid]; !ok {
 		// we create a new StateTopic
 		topic := StateTopic{
-			Input:    make(chan devcom.DevProto),
-			Consumer: [](chan devcom.DevProto){},
+			Input:         make(chan devcom.DevProto),
+			Consumer:      [](chan devcom.DevProto){},
+			TopicMutex:    &sync.Mutex{},
+			ConsumerMutex: &sync.Mutex{},
 		}
 		topics[uoid] = &topic
 
@@ -38,26 +47,34 @@ func register(uoid uint) (chan devcom.DevProto, chan devcom.DevProto) {
 
 // unregister user from his topic
 func unregister(uoid uint, consumer chan devcom.DevProto) {
+	log.Debug("Unregister", "user", uoid, "consumer", consumer)
 	usertopic := topics[uoid]
+	if usertopic == nil {
+		log.Error("want to unregister, but consumers and complete topic is already cleared")
+		return
+	}
 
 	for i, c := range usertopic.Consumer {
 		if c == consumer {
-			// send the consumer the Quit Command and close it
-			c <- devcom.DevProto{Action: devcom.Quit}
-			close(c)
-
+			usertopic.ConsumerMutex.Lock()
 			// remove the Consumer
 			usertopic.Consumer = append(usertopic.Consumer[:i], usertopic.Consumer[i+1:]...)
+
+			// close the Consumer
+			close(c)
+			usertopic.ConsumerMutex.Unlock()
 		}
 	}
 
 	// if this was the last consumer
 	if len(usertopic.Consumer) == 0 {
-		// we can send quit to the usertopic and close the usertopic
-		usertopic.Input <- devcom.DevProto{Action: devcom.Quit}
-		close(usertopic.Input)
+		log.Debug("last Consumer -> we remove topic", "user", uoid, "topic", usertopic.Input)
+		usertopic.TopicMutex.Lock()
 		// delete the complete usertopic
 		delete(topics, uoid)
+		// close topichandler goroutine
+		close(usertopic.Input)
+		usertopic.TopicMutex.Unlock()
 	}
 }
 
@@ -66,36 +83,60 @@ func topicHandler(stateTopic *StateTopic) {
 	// start goroutine and loop forever
 	go func() {
 		for {
-			msg := <-stateTopic.Input
-			if msg.Action == devcom.Quit {
-				// exit loop
+			msg, more := <-stateTopic.Input
+			if more {
+				log.Debug("we got a msg into topic", "user", stateTopic.Input, "msg", msg)
+
+				// send to every consumer
+				stateTopic.ConsumerMutex.Lock()
+				for _, consumer := range stateTopic.Consumer {
+					consumer <- msg
+				}
+				stateTopic.ConsumerMutex.Unlock()
+			} else {
+				//closed
 				break
 			}
-			// send to every consumer
-			for _, consumer := range stateTopic.Consumer {
-				consumer <- msg
-			}
 		}
+		log.Debug("we quit topicHandler", "consumer", stateTopic.Consumer)
 	}()
 }
 
 // the consumerHandler for every Consumer
-func consumerHandler(ws revel.ServerWebSocket, consumer chan devcom.DevProto) {
+func consumerHandler(ws revel.ServerWebSocket, consumer chan devcom.DevProto, uid uint) {
 	//internal Receiver from StateTopic loop forever
 	go func() {
+		log.Debug("we start a new Consumer goroutine")
 		for {
-			msg := <-consumer
-			// after here, it is possible that WebSocketController is disabled
-			if msg.Action == devcom.Quit {
-				break
-			}
+			msg, more := <-consumer
+			if more {
+				log.Debug("we got a msg ", "consumer", consumer, "msg", msg)
 
-			// send to Websocket
-			err := ws.MessageSendJSON(&msg)
+				// send to Websocket
+				err := ws.MessageSendJSON(&msg)
 
-			if err != nil {
+				if err != nil {
+					// unregister only in websocket-method
+					log.Debug("Websocket closed", "consumer", consumer)
+				}
+			} else {
+				//closed
 				break
 			}
 		}
+		log.Debug("we quit the consumer", "consumer", consumer)
 	}()
+}
+
+func notifyAlLConsumer(uid uint, msg *devcom.DevProto) {
+	// check if topic exists -> because it could be cleared from a consumer handler
+	usertopic := topics[uid]
+	log.Debug("we notify any consumer", "user", uid, "msg", msg)
+	usertopic.TopicMutex.Lock()
+	if topics[uid] != nil {
+		topics[uid].Input <- *msg
+	} else {
+		log.Error("want to inform consumers, but topic already closed")
+	}
+	usertopic.TopicMutex.Unlock()
 }
