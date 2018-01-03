@@ -14,12 +14,16 @@ import (
 )
 
 /*
+Compile for Linux
 env GOOS=linux GOARCH=arm GOARM=6 go build
 
-./rpiswitch -url ws://jupiter:9000/Main/DeviceFeed -user admin -pass admin -device device-1
+Start examples
+./rpiswitch -url ws://jupiter:9000/Main/DeviceFeed -device device-1 -user admin -pass admin -port 4
+./rpiswitch -url ws://jupiter:8180/Main/DeviceFeed -device device-5 -user gipde90@gmail.com -pass hallo -port 4
+./rpiswitch -device device-5 -user gipde90@gmail.com -pass hallo -port 4
 
 
-sysfs
+Test with sysfs
 
 cd /sys/class/gpio
 echo 4 > export
