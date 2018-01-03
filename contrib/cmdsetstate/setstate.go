@@ -8,6 +8,11 @@ import (
 	"schneidernet/smarthome/app/models/devcom"
 )
 
+/*
+go run setstate.go -url ws://localhost:8180/Main/DeviceFeed -user admin -pass admin -device device-1 -state OFF
+
+*/
+
 func basicAuth(username, password string) string {
 	auth := username + ":" + password
 	return base64.StdEncoding.EncodeToString([]byte(auth))

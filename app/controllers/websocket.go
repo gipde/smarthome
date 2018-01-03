@@ -54,6 +54,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	c.Log.Debugf("Starting Websocket: %+v", usertopic)
 
 	// start consumer-handler
+	// TODO: funktioniert nicht, da es hier nur pro Websocket arbeitet -> globaler Context notwendig
 	consumerHandler(ws, consumer, c.getCurrentUserID())
 
 	// connection state
@@ -65,7 +66,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		err := ws.MessageReceiveJSON(&msg)
 		c.Log.Debugf("Received Message %+v -> %s", ws, msg)
 		if err != nil {
-			c.Log.Debug("we got a error on Receiving from Websocket %v", err)
+			c.Log.Debugf("we got a error on Receiving from Websocket %v", err)
 			break
 		}
 
@@ -140,7 +141,10 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
 				device.Connected = false
 				delete(primaryConnector, device.ID)
-				return true
+				dao.SaveDevice(device)
+				// send to all Consumers
+				notifyAlLConsumer(c.getCurrentUserID(), convertToDevcom(device, devcom.StateUpdate))
+				return false
 			})
 		}
 

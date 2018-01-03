@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-//go run devicewebsocket.go -user admin -pass admin -device device-1 -url ws://localhost:8180/Main/DeviceFeed
+//go run devicewebsocket.go -user admin -pass admin -url ws://localhost:8180/Main/DeviceFeed
 
 func basicAuth(username, password string) string {
 	auth := username + ":" + password
