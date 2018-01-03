@@ -36,7 +36,7 @@ echo 4 > unexport
 
 */
 
-var done = false
+var ctrlC = false
 
 const (
 	On  = "ON"
@@ -48,17 +48,168 @@ var (
 	port                 *int
 	test, checkstate     *bool
 
-	exitHdl, endWS chan bool
+	currentState string
+	wsErr        error
 )
 
 func main() {
+
+	pin := checkArgs()
+
+	// Marker -> to see that program is working
+	go markHandler()
+	// Ctrl-C Handler
+	ctrlCHandler()
+
+	// Mainloop with Reconnect on Error
+	for {
+		wsErr = nil
+		startWebsocket(pin)
+
+		time.Sleep(time.Second * 1)
+		log.Println("Reconnect ...")
+	}
+}
+
+func basicAuth(username, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
+}
+
+func startWebsocket(pin rpio.Pin) {
+	log.Println("Connecting to " + *url)
+
+	config, _ := websocket.NewConfig(*url, "http://localhost/")
+	config.Header.Add("Authorization", "Basic "+basicAuth(*user, *pass))
+	ws, err := websocket.DialConfig(config)
+	if err != nil {
+		wsErr = err
+		return
+	}
+
+	// websocket receive handler
+	go websocketHandler(ws, pin)
+
+	// connect
+	sendToWebsocket(ws, &devcom.DevProto{
+		Action: devcom.Connect,
+		Device: devcom.Device{
+			ID: *dev,
+		},
+	})
+
+	// .. and transmit current state
+	currentState = getState(pin)
+	transmitState(currentState, ws, dev)
+
+	// Loop Forever
+	for {
+		if *checkstate {
+			newstate := getState(pin)
+			log.Printf("State from switch: %s > from server %s\n", newstate, currentState)
+			if newstate != currentState {
+				log.Println("NEW STATE FROM SWITCH: " + newstate)
+				transmitState(newstate, ws, dev)
+				currentState = newstate
+			}
+		}
+		//error on websocket
+		if wsErr != nil {
+			return
+		}
+		if ctrlC {
+			cleanUpAndExit(ws, dev)
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func websocketHandler(ws *websocket.Conn, pin rpio.Pin) {
+	for {
+		var incoming devcom.DevProto
+		err := websocket.JSON.Receive(ws, &incoming)
+		if err != nil {
+			wsErr = err
+			log.Printf("Error: %+v", err)
+			return
+		}
+		log.Printf("we received: %+v\n", incoming)
+		switch incoming.Action {
+		// stateupdate received
+		case devcom.StateUpdate:
+
+			switch incoming.PayLoad {
+			case On:
+				setState(pin, On)
+			case Off:
+				setState(pin, Off)
+			}
+
+		}
+	}
+}
+
+func transmitState(state string, ws *websocket.Conn, dev *string) {
+	sendToWebsocket(ws, &devcom.DevProto{
+		Action: devcom.SetState,
+		Device: devcom.Device{
+			ID: *dev,
+		},
+		PayLoad: state,
+	})
+}
+
+func sendToWebsocket(ws *websocket.Conn, command *devcom.DevProto) {
+	log.Printf("Sending %+v ...\n", command)
+	err := websocket.JSON.Send(ws, command)
+	if err != nil {
+		wsErr = err
+		log.Printf("Error: %+v", err)
+	}
+}
+
+func openPin(pin uint) rpio.Pin {
+	log.Printf("Opening RPI Port %d\n", pin)
+	err := rpio.Open()
+	if err != nil {
+		log.Fatal("Error opening", "port", pin)
+	}
+	result := rpio.Pin(pin)
+	result.Output()
+
+	return result
+}
+
+func getState(pin rpio.Pin) string {
+	x := pin.Read()
+	var state string
+	if x == 1 {
+		state = Off
+	} else {
+		state = On
+	}
+	return state
+}
+
+func setState(pin rpio.Pin, state string) {
+	log.Println("Switch " + state)
+	if state == On {
+		pin.Low()
+	} else {
+		pin.High()
+	}
+	currentState = state
+}
+
+func checkArgs() rpio.Pin {
 	url = flag.String("url", "wss://2e1512f0-d590-4eed-bb41-9ad3abd03edf.pub.cloud.scaleway.com/sh/Main/DeviceFeed", "websocket url")
 	user = flag.String("user", "", "username for accessing device")
 	pass = flag.String("pass", "", "password for accessing device")
-	dev = flag.String("device", "", "device")
-	port = flag.Int("port", 0, "port")
-	test = flag.Bool("test", false, "test")
-	checkstate = flag.Bool("checkstate", false, "periodically check state of device")
+	dev = flag.String("device", "", "device name (e.g. device-1)")
+	port = flag.Int("port", 0, "raspberr-pi gpio port")
+	test = flag.Bool("test", false, "test gpio port")
+	checkstate = flag.Bool("checkstate", false, "periodically check state of device and notify change of state")
 	flag.Parse()
 
 	exitErr(*port == 0, "Port not set")
@@ -82,71 +233,7 @@ func main() {
 	exitErr(*pass == "", "Password not set")
 	exitErr(*dev == "", "Device not set")
 
-	// Marker -> to see that program is working
-	go func() {
-		for {
-			log.Println("--MARK--")
-			time.Sleep(1 * time.Hour)
-		}
-	}()
-
-	ctrlCHandler()
-
-	for {
-		startWebsocket(pin)
-
-		//terminate current ExitHdl
-		exitHdl <- false
-	}
-
-}
-
-func startWebsocket(pin rpio.Pin) {
-	log.Println("Connecting to " + *url)
-
-	config, _ := websocket.NewConfig(*url, "http://localhost/")
-	config.Header.Add("Authorization", "Basic "+basicAuth(*user, *pass))
-	ws, err := websocket.DialConfig(config)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	go exitHandler(ws, dev)
-
-	// websocket receive handler
-	go websocketHandler(ws, pin)
-
-	// connect
-	sendToWebsocket(ws, &devcom.DevProto{
-		Action: devcom.Connect,
-		Device: devcom.Device{
-			ID: *dev,
-		},
-	})
-
-	// .. and transmit current state
-	currentState := getState(pin)
-	transmitState(currentState, ws, dev)
-
-	// // loop forever and read every second current state
-	// if *checkstate {
-	// 	for {
-	// 		newstate := getState(pin)
-	// 		log.Print("State from switch: ")
-	// 		log.Println(newstate)
-	// 		if newstate != currentState {
-	// 			log.Println("NEW STATE FROM SWITCH: " + newstate)
-	// 			transmitState(newstate, ws, dev)
-	// 			currentState = newstate
-	// 		}
-	// 		time.Sleep(1 * time.Second)
-	// 	}
-	}
-
-	// wait for end Handler
-	<- endWS
-
+	return pin
 }
 
 func exitErr(cond bool, err string) {
@@ -156,19 +243,27 @@ func exitErr(cond bool, err string) {
 	}
 }
 
-func exitHandler(ws *websocket.Conn, dev *string) {
-	// wait for msg
-	v := <-exitHdl
+func cleanUpAndExit(ws *websocket.Conn, dev *string) {
+	// send disconnect
+	sendToWebsocket(ws, &devcom.DevProto{
+		Action: devcom.Disconnect,
+		Device: devcom.Device{
+			ID: *dev,
+		},
+	})
 
-	// regular exit
-	if v {
-		sendToWebsocket(ws, &devcom.DevProto{
-			Action: devcom.Disconnect,
-			Device: devcom.Device{
-				ID: *dev,
-			},
-		})
-		ws.Close()
+	//chance to get response
+	time.Sleep(1 * time.Second)
+	ws.Close()
+
+	//finally exit
+	os.Exit(0)
+}
+
+func markHandler() {
+	for {
+		log.Println("--MARK--")
+		time.Sleep(1 * time.Hour)
 	}
 }
 
@@ -177,101 +272,16 @@ func ctrlCHandler() {
 	signal.Reset(os.Interrupt)
 	signal.Notify(c, os.Interrupt)
 	go func() {
+		//receive msg
 		<-c
-		// regular exit
-		exitHdl <- true
 
 		log.Println("we received CTRL+C")
-		done = true
-		// exit hard if websocket answer hangs
+		ctrlC = true
+		// exit hard if websocket hangs
 		go func() {
 			time.Sleep(5 * time.Second)
 			os.Exit(0)
 		}()
 
 	}()
-}
-
-func websocketHandler(ws *websocket.Conn, pin rpio.Pin) {
-	for {
-		var incoming devcom.DevProto
-		err := websocket.JSON.Receive(ws, &incoming)
-		if err != nil {
-			log.Printf("Error: %+v", err)
-			break
-		}
-		log.Printf("we received: %+v\n", incoming)
-		switch incoming.Action {
-		case devcom.StateUpdate:
-
-			switch incoming.PayLoad {
-			case On:
-				setState(pin, On)
-			case Off:
-				setState(pin, Off)
-			}
-		}
-		// if done {
-		// 	ws.Close()
-		// 	log.Println("try to reconnect")
-		// }
-	}
-	endWS <- true
-}
-
-func getState(pin rpio.Pin) string {
-	x := pin.Read()
-
-	log.Printf("got from device: %d\n", x)
-	var state string
-	if x == 1 {
-		state = Off
-	} else {
-		state = On
-	}
-	return state
-}
-
-func setState(pin rpio.Pin, state string) {
-	if state == On {
-		pin.Low()
-	}
-	if state == Off {
-		pin.High()
-	}
-}
-
-func basicAuth(username, password string) string {
-	auth := username + ":" + password
-	return base64.StdEncoding.EncodeToString([]byte(auth))
-}
-
-func transmitState(state string, ws *websocket.Conn, dev *string) {
-	sendToWebsocket(ws, &devcom.DevProto{
-		Action: devcom.SetState,
-		Device: devcom.Device{
-			ID: *dev,
-		},
-		PayLoad: state,
-	})
-}
-
-func openPin(pin uint) rpio.Pin {
-	log.Printf("Opening RPI Port %d\n", pin)
-	err := rpio.Open()
-	if err != nil {
-		log.Fatal("Error opening", "port", pin)
-	}
-	result := rpio.Pin(pin)
-	result.Output()
-
-	return result
-}
-
-func sendToWebsocket(ws *websocket.Conn, command *devcom.DevProto) {
-	log.Printf("Sending %+v ...\n", command)
-	err := websocket.JSON.Send(ws, command)
-	if err != nil {
-		log.Fatal(err)
-	}
 }

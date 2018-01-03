@@ -23,8 +23,8 @@ Das Rendering ist grundsätzlich Aufgabe des Clients selbst
 */
 
 // check if user has permission for websocket
+// only if no session is available
 func (c Main) checkWebsocketBasicAuth() revel.Result {
-
 	auth := c.Request.Header.Get("Authorization")
 	if auth != "" {
 
@@ -42,8 +42,10 @@ func (c Main) checkWebsocketBasicAuth() revel.Result {
 				return nil
 			}
 		}
+		revel.AppLog.Error("WS-Auth - User not found", "user", username)
 	}
 
+	revel.AppLog.Error("WS-Auth Error")
 	return c.RenderError(errors.New("401: Not authorized"))
 }
 

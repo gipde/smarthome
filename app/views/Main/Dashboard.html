@@ -1,8 +1,9 @@
 {{template "Main/mheader.html" .}}
+<script src="{{.contextRoot}}/public/js/reconnecting-websocket.js"></script>
 
 <div class="container">
     <div class="page-header">
-        <h3><span></span> Geräteübersicht</h3>
+        <h3><span>Geräteübersicht</span><span id="wsstate"></span></h3>
     </div>
     <div id="connection-error"> </div>
     <div class="container">
@@ -27,7 +28,9 @@
 
         <script>
             // Create a socket
-            var socket = new WebSocket('{{.websocketHost}}{{.contextRoot}}/Main/DeviceFeed');
+            var socket = new ReconnectingWebSocket('{{.websocketHost}}{{.contextRoot}}/Main/DeviceFeed');
+
+            var timer;
 
             // send Click Command on every Click
             var callbackhandler = function() {
@@ -55,6 +58,20 @@
             };
 
             $(document).ready(function() {
+
+                //display connection state
+                timer = setInterval(function() {
+                    $("#wsstate").html(function() {
+                        var color;
+                        if (socket.readyState == 1)
+                            color = "lightgreen"
+                        else
+                            color = "red"
+                        return `<svg height=25 width=25>
+                            <circle cx=14 cy=18 r=5 stroke=black stroke-width=1 fill=` + color + `/>
+                        </svg>`
+                    })
+                }, 1000);
 
                 // Message received on the socket
                 socket.onmessage = function(event) {
@@ -166,6 +183,8 @@
                 socket.close()
                 console.log("We leave the page")
                     // return "Handler for .unload() called.";
+                window.clearInterval(timer)
+
             });
         </script>
 
