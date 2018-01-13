@@ -60,8 +60,6 @@ func main() {
 
 	pin := checkArgs()
 
-	// Marker -> to see that program is working
-	go markHandler()
 	// Ctrl-C Handler
 	ctrlCHandler()
 
@@ -93,6 +91,9 @@ func startWebsocket(pin rpio.Pin) {
 
 	// websocket receive handler
 	go websocketHandler(ws, pin)
+
+	// Marker, Pinger -> to see that program is working
+	go markHandler(ws)
 
 	// connect
 	sendToWebsocket(ws, &devcom.DevProto{
@@ -264,9 +265,16 @@ func cleanUpAndExit(ws *websocket.Conn, dev *string) {
 	os.Exit(0)
 }
 
-func markHandler() {
+func markHandler(ws *websocket.Conn) {
 	for {
 		log.Println("--MARK--")
+		sendToWebsocket(ws, &devcom.DevProto{
+			Action: devcom.Ping,
+		})
+		//error on websocket
+		if wsErr != nil {
+			return
+		}
 		time.Sleep(1 * time.Hour)
 	}
 }
