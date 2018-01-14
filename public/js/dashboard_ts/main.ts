@@ -54,13 +54,14 @@ class Dashboard {
 
     socket: ReconnectingWebsocket
     timer: number
+    contextRoot:string
 
     drawSwitchable(incoming: DevProto, selector: JQuery, svg_part: string): void {
         if (incoming.payload == ON) {
-            selector.html("<img src=/public/img/" + svg_part + "_on.svg width=30 height=30/>")
+            selector.html("<img src="+this.contextRoot+"/public/img/" + svg_part + "_on.svg width=30 height=30/>")
             selector.addClass(SWITCHED_ON)
         } else {
-            selector.html("<img src=/public/img/" + svg_part + "_off.svg width=30 height=30/>")
+            selector.html("<img src="+this.contextRoot+"/public/img/" + svg_part + "_off.svg width=30 height=30/>")
             selector.removeClass(SWITCHED_ON)
         }
     }
@@ -143,19 +144,20 @@ class Dashboard {
 
         // when Document ready rendered
         $(document).ready(() => {
-            let socket: ReconnectingWebsocket = new ReconnectingWebsocket($("#wsstate").attr("wshost") + '/Main/DeviceFeed')
-            this.socket = socket
-
+            this.contextRoot=$("#wsstate").attr("contextroot")
+            let url=$("#wsstate").attr("wshost") + this.contextRoot+ '/Main/DeviceFeed'
+            this.socket = new ReconnectingWebsocket(url)
+ 
             // set Handler
-            socket.onmessage = this.getIncomingHdl()
-            socket.onclose = function () {
+            this.socket.onmessage = this.getIncomingHdl()
+            this.socket.onclose = function () {
                 console.log("Websocket will be closed")
             }
 
-            if (socket.readyState == 1) {
+            if (this.socket.readyState == 1) {
                 this.setDevHdl()
             } else {
-                socket.onopen = () => { this.setDevHdl() }
+                this.socket.onopen = () => { this.setDevHdl() }
             }
             // check the connection & ping server
             this.timer = this.checkConnection()
