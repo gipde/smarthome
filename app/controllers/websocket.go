@@ -56,7 +56,6 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	c.Log.Debugf("Starting Websocket: %+v", usertopic)
 
 	// start consumer-handler
-	// TODO: funktioniert nicht, da es hier nur pro Websocket arbeitet -> globaler Context notwendig
 	consumerHandler(ws, consumer, c.getCurrentUserID())
 
 	// connection state
@@ -104,6 +103,10 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 					Time: time.Now(),
 				},
 			})
+
+		case devcom.Pong:
+			// TODO: if no Pong will be received ->
+			// terminate consumer-hdl, websocket, and so on
 
 		case devcom.RequestState:
 			dbdev := dao.FindDeviceByID(c.getCurrentUserID(), incoming.Device.ID)

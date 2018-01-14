@@ -35,6 +35,7 @@ enum DeviceType {
 
 enum Action {
     Ping = "Ping",
+    Pong = "Pong",
     StateResponse = "StateResponse",
     StateUpdate = "StateUpdate",
     RequestState = "RequestState",
@@ -58,12 +59,12 @@ class Dashboard {
     socket: ReconnectingWebsocket
     timer: number
 
-    drawSwitchable(incoming: DevProto, selector: JQuery, part: string): void {
+    drawSwitchable(incoming: DevProto, selector: JQuery, svg_part: string): void {
         if (incoming.payload == ON) {
-            selector.html("<img src=/public/img/" + part + "_on.svg width=30 height=30/>")
+            selector.html("<img src=/public/img/" + svg_part + "_on.svg width=30 height=30/>")
             selector.addClass(SWITCHED_ON)
         } else {
-            selector.html("<img src=/public/img/" + part + "_off.svg width=30 height=30/>")
+            selector.html("<img src=/public/img/" + svg_part + "_off.svg width=30 height=30/>")
             selector.removeClass(SWITCHED_ON)
         }
     }
@@ -100,6 +101,12 @@ class Dashboard {
                     }
                     break
                 }
+                case Action.Ping: {
+                    this.socket.send(JSON.stringify({
+                        action: Action.Pong
+                    } as DevProto))
+                    break
+                }
             }
         }
     }
@@ -119,7 +126,7 @@ class Dashboard {
         }, 1000)
     }
 
-    send(action: Action, id: string): void {
+    send(action: Action, id?: string): void {
         this.socket.send(JSON.stringify({
             action: action,
             device: { id: id }

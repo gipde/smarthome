@@ -4,6 +4,7 @@ import (
 	"github.com/revel/revel"
 	"schneidernet/smarthome/app/models/devcom"
 	"sync"
+	"time"
 )
 
 var log = revel.RootLog.New("module", "state")
@@ -19,6 +20,27 @@ type StateTopic struct {
 
 // Global Topics-Map per useroid
 var topics = make(map[uint]*StateTopic)
+
+func init() {
+	revel.OnAppStart(consumerPing)
+}
+
+// pinging all consumer every 5 min
+func consumerPing() {
+	go func() {
+		for {
+			time.Sleep(300 * time.Second)
+			log.Info("sending Ping to all consumer...")
+
+			for user := range topics {
+				notifyAlLConsumer(user, &devcom.DevProto{
+					Action: devcom.Ping,
+				})
+			}
+		}
+
+	}()
+}
 
 // register new User for his topic
 func register(uoid uint) (chan devcom.DevProto, chan devcom.DevProto) {
@@ -103,6 +125,7 @@ func topicHandler(stateTopic *StateTopic) {
 }
 
 // the consumerHandler for every Consumer
+// a consumer is a client (e.g. browser or a device-connector)
 func consumerHandler(ws revel.ServerWebSocket, consumer chan devcom.DevProto, uid uint) {
 	//internal Receiver from StateTopic loop forever
 	go func() {

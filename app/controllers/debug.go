@@ -99,6 +99,10 @@ func (c Main) CreateDev() revel.Result {
 	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
 }
 
+func (c Main) Debug() revel.Result {
+	return c.Render()
+}
+
 func (c Debug) ListGoroutines() revel.Result {
 	buf := new(bytes.Buffer)
 	pprof.Lookup("goroutine").WriteTo(buf, 1)

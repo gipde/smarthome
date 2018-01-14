@@ -5,7 +5,7 @@ import ()
 type DevProto struct {
 	Device  `json:"device,omitempty"`
 	Action  string      `json:"action"`
-	PayLoad interface{} `json:"payload"`
+	PayLoad interface{} `json:"payload,omitempty"`
 }
 type Device struct {
 	ID          string `json:"id,omitempty"`
