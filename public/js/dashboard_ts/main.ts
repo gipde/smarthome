@@ -1,14 +1,22 @@
+import * as ReconnectingWebsocket from "reconnecting-websocket";
 
 /*
 embed in Dashboard.html
 <script src="{{.contextRoot}}/public/js/dashboard_ts/main.js"></script>
 
-install types
-npm install --save @types/jquery@2
-npm install --save @types/reconnectingwebsocket
-*/
+install all deps
+ > npm install
 
- declare var ReconnectingWebSocket: any
+link global typescript
+ > npm link typescript
+
+run the build via webpack (see package.json)
+ > npm run build
+
+in Dev-Mode (with file watcher)
+ > npm run watch
+
+*/
 
 
 const xpath = ""
@@ -17,12 +25,14 @@ const wspath = "ws://localhost:9000" + xpath
 const PingInterval: number = 300
 const ON = "ON"
 const SWITCHED_ON = "switchedOn"
+
 enum DeviceType {
     Socket = 0,
     Switch = 1,
     Bulb = 2,
     Thermostat = 3
 }
+
 enum Action {
     Ping = "Ping",
     StateResponse = "StateResponse",
@@ -30,7 +40,6 @@ enum Action {
     RequestState = "RequestState",
     FlipState = "FlipState",
 }
-
 
 interface Device {
     id: string
@@ -46,10 +55,10 @@ interface DevProto {
 
 class Dashboard {
 
-    socket: any
+    socket: ReconnectingWebsocket
     timer: number
 
-    drawSwitchable(incoming: DevProto, selector: any, part: string): void {
+    drawSwitchable(incoming: DevProto, selector: JQuery, part: string): void {
         if (incoming.payload == ON) {
             selector.html("<img src=/public/img/" + part + "_on.svg width=30 height=30/>")
             selector.addClass(SWITCHED_ON)
@@ -117,14 +126,16 @@ class Dashboard {
         } as DevProto))
     }
 
-    setDevHdl() {
+    setDevHdl():void {
         let instance = this
-        $(".circle").each(function (this: any) { instance.send(Action.RequestState, $(this)[0].id) })
-        $(".circle").click(function (this: any) { instance.send(Action.FlipState, $(this)[0].id) })
+        $(".circle").each(function (this: HTMLDivElement,_index:number,_elem:Element) { 
+            instance.send(Action.RequestState, $(this)[0].id) })
+        $(".circle").click(function (this: HTMLDivElement,_eventObject:JQueryEventObject) { 
+            instance.send(Action.FlipState, $(this)[0].id) })
     }
 
     constructor() {
-        let socket = new ReconnectingWebSocket(wspath + '/Main/DeviceFeed')
+        let socket:ReconnectingWebsocket = new ReconnectingWebsocket(wspath + '/Main/DeviceFeed')
         this.socket = socket
 
         // set Handler
@@ -140,6 +151,7 @@ class Dashboard {
             } else {
                 socket.onopen = () => { this.setDevHdl() }
             }
+            // check the connection & ping server
             this.timer = this.checkConnection()
         })
 
@@ -153,6 +165,3 @@ class Dashboard {
 }
 
 new Dashboard()
-
-
-

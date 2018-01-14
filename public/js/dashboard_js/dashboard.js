@@ -3,6 +3,7 @@ closure compiler
 java -jar $HOME/Downloads/closure-compiler-v20180101.jar --js dashboard.js --compilation_level SIMPLE --js_output_file out.js
 
 embed in Dashboard.html
+<script src="{{.contextRoot}}/public/js/reconnecting-websocket.js"></script>
 <script src="{{.contextRoot}}/public/js/dashboard_js/out.js"></script>
 
 */

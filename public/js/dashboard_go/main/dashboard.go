@@ -7,6 +7,7 @@ include in Dashboard.html with
 <script src="http://localhost:8080/schneidernet/smarthome/public/js/dashboard_go/dashboard_go.js"></script>
 
 gopherjs build schneidernet/smarthome/public/js/dashboard_go/main --localmap -w
+<script src="{{.contextRoot}}/public/js/reconnecting-websocket.js"></script>
 <script src="{{.contextRoot}}/public/js/dashboard_go/main.js"></script>
 
 */

@@ -1,0 +1,20 @@
+{
+    "name": "dashboard_ts",
+    "version": "1.0.0",
+    "description": "dashboard json part in typescript",
+    "main": "webpack.config.js",
+    "dependencies": {
+        "@types/jquery": "^2.0.48",
+        "reconnecting-websocket": "^3.2.2",
+        "ts-loader": "^3.2.0",
+        "webpack": "^3.10.0"
+    },
+    "devDependencies": {},
+    "scripts": {
+        "build": "webpack",
+        "watch": "webpack --watch --config webpack-dev.config.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+}
