@@ -18,10 +18,6 @@ in Dev-Mode (with file watcher)
 
 */
 
-
-const xpath = ""
-const wspath = "ws://localhost:9000" + xpath
-
 const PingInterval: number = 300
 const ON = "ON"
 const SWITCHED_ON = "switchedOn"
@@ -133,26 +129,29 @@ class Dashboard {
         } as DevProto))
     }
 
-    setDevHdl():void {
+    setDevHdl(): void {
         let instance = this
-        $(".circle").each(function (this: HTMLDivElement,_index:number,_elem:Element) { 
-            instance.send(Action.RequestState, $(this)[0].id) })
-        $(".circle").click(function (this: HTMLDivElement,_eventObject:JQueryEventObject) { 
-            instance.send(Action.FlipState, $(this)[0].id) })
+        $(".circle").each(function (this: HTMLDivElement, _index: number, _elem: Element) {
+            instance.send(Action.RequestState, $(this)[0].id)
+        })
+        $(".circle").click(function (this: HTMLDivElement, _eventObject: JQueryEventObject) {
+            instance.send(Action.FlipState, $(this)[0].id)
+        })
     }
 
     constructor() {
-        let socket:ReconnectingWebsocket = new ReconnectingWebsocket(wspath + '/Main/DeviceFeed')
-        this.socket = socket
-
-        // set Handler
-        socket.onmessage = this.getIncomingHdl()
-        socket.onclose = function () {
-            console.log("Websocket will be closed")
-        }
 
         // when Document ready rendered
         $(document).ready(() => {
+            let socket: ReconnectingWebsocket = new ReconnectingWebsocket($("#wsstate").attr("wshost") + '/Main/DeviceFeed')
+            this.socket = socket
+
+            // set Handler
+            socket.onmessage = this.getIncomingHdl()
+            socket.onclose = function () {
+                console.log("Websocket will be closed")
+            }
+
             if (socket.readyState == 1) {
                 this.setDevHdl()
             } else {
@@ -165,7 +164,7 @@ class Dashboard {
         // Unload Window
         $(window).unload(() => {
             console.log("We leave the page")
-            socket.close()
+            this.socket.close()
             window.clearInterval(this.timer)
         })
     }

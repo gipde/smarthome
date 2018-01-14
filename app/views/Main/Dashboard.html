@@ -1,9 +1,8 @@
 {{template "Main/mheader.html" .}}
 <script src="{{.contextRoot}}/public/js/dashboard_ts/dist/bundle.js"></script>
-
 <div class="container">
     <div class="page-header">
-        <h3><span>Geräteübersicht</span><span id="wsstate"></span></h3>
+        <h3><span>Geräteübersicht</span><span id="wsstate" wshost="{{.websocketHost}}{{.contextRoot}}"></span></h3>
     </div>
     <div id="connection-error"> </div>
     <div class="container">
@@ -12,13 +11,9 @@
             <div class="col-md-4 bordered">
                 <div class="panel panel-default center">
                     <div class="panel-heading center" style="text-align: center">
-                        <!-- device-{{.ID}} -->
-                        <!-- <br> -->
                         {{$value.Name}}
                     </div>
                     <div class="panel-body">
-                        <!-- <div id="device-{{.ID}}" class="{{if eq .State `ON`}}switchedOn {{end}}{{if eq .Connected true}}connected {{end}}circle center"><img src="/public/img/thermo2.svg" width="25" height="25" />-25.7</div> -->
-                        <!-- <div id="device-{{.ID}}" class="{{if eq .State `ON`}}switchedOn {{end}}{{if eq .Connected true}}connected {{end}}circle center">{{.State}}</div> -->
                         <div id="device-{{.ID}}" class="circle center"></div>
                     </div>
                 </div>
