@@ -52,7 +52,7 @@ func (c Main) checkWebsocketBasicAuth() revel.Result {
 // DeviceFeed is the Main-Entry for Websocket
 func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
-	usertopic, consumer := register(c.getCurrentUserID())
+	usertopic, consumer := register(c.getCurrentUserID(), c.ClientIP)
 	c.Log.Debugf("Starting Websocket: %+v", usertopic)
 
 	// start consumer-handler
@@ -99,8 +99,12 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		case devcom.Ping:
 			ws.MessageSendJSON(devcom.DevProto{
 				Action: devcom.Pong,
-				PayLoad: struct{ Time time.Time }{
+				PayLoad: struct {
+					Time time.Time
+					ID   string
+				}{
 					Time: time.Now(),
+					ID:   consumer.Id,
 				},
 			})
 

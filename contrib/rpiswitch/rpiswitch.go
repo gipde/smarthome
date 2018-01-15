@@ -151,6 +151,11 @@ func websocketHandler(ws *websocket.Conn, pin rpio.Pin) {
 				setState(pin, Off)
 			}
 
+		case devcom.Ping:
+			sendToWebsocket(ws, &devcom.DevProto{
+				Action: devcom.Pong,
+			})
+
 		}
 	}
 }
@@ -275,7 +280,7 @@ func markHandler(ws *websocket.Conn) {
 		if wsErr != nil {
 			return
 		}
-		time.Sleep(1 * time.Hour)
+		time.Sleep(5 * time.Minute)
 	}
 }
 

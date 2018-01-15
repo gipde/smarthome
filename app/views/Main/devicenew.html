@@ -22,7 +22,7 @@
             </div>
             <div class="form-group">
                 <label for="devtype">Gerätetyp:</label>
-                <select multiple class="form-control" name="iface">
+                <select multiple class="form-control" id="devtype" name="device.DeviceType">
                         {{ range $index,$value:=.devicetype}}
                         <option value={{$index}} >{{$value}}</option>
                         {{ end }}

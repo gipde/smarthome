@@ -47,7 +47,7 @@ interface Device {
 interface DevProto {
     action: Action
     device?: Device
-    payload?: string
+    payload?: any
 }
 
 class Dashboard {
@@ -104,22 +104,28 @@ class Dashboard {
                     } as DevProto))
                     break
                 }
+
+                case Action.Pong: {
+                    $("#wsstate").attr("title",data.payload.ID)
+                }
             }
         }
     }
 
     checkConnection(): number {
-        let count = PingInterval
+        let count = 0
         return setInterval(() => {
-            let color = this.socket.readyState == 1 ? "lightgreen" : "red"
-            $("#wsstate").html('<svg height=25 width=25><circle cx=14 cy=18 r=5 stroke=black stroke-width=1 fill=' + color + '/></svg>')
-
             // ping
-            count--
             if (count == 0) {
                 this.socket.send(JSON.stringify(<DevProto>{ action: Action.Ping }))
                 count = PingInterval
+            } else {
+                count--
             }
+
+            let color = this.socket.readyState == 1 ? "lightgreen" : "red"
+            $("#wsstate").html('<svg height=25 width=25><circle cx=14 cy=18 r=5 stroke=black stroke-width=1 fill=' + color + '/></svg>')
+
         }, 1000)
     }
 
