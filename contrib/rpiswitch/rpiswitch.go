@@ -274,7 +274,7 @@ func markHandler(ws *websocket.Conn) {
 	for {
 		log.Println("--MARK--")
 		sendToWebsocket(ws, &devcom.DevProto{
-			Action: devcom.Ping,
+			Action: devcom.ListeDevices,
 		})
 		//error on websocket
 		if wsErr != nil {
