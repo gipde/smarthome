@@ -92,7 +92,7 @@ class Dashboard {
                             break
                         }
                         case DeviceType.Thermostat: {
-                            sel.html("<img src=/public/img/thermo.svg width=30 height=30/>" + data.payload)
+                            sel.html("<img src="+this.contextRoot+"/public/img/thermo.svg width=30 height=30/>" + data.payload)
                             break
                         }
                     }
