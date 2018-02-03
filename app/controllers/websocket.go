@@ -138,11 +138,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
 		case devcom.Connect:
 			modify(incoming.Device.ID, c.getCurrentUserID(), func(device *dao.Device) bool {
-				if device.Connected != "" {
-					c.Log.Error("Device already connected - cannot connect")
-					return false
-				}
-				// check if connected
+				// we accept any (re)connect
 				device.Connected = consumer.ID
 				dao.PersistLog(device.ID, "Device connected: "+consumer.ID)
 				return true
@@ -177,11 +173,15 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	return nil
 }
 
-func SetState(device uint, state string) {
-	dbdev := dao.GetDeviceById(device)
+func SetStateWithCheckAutoOff(device *dao.Device, state string) {
+	SetState(device, state)
+	checkAndSetAutoOff(device)
+}
+
+func SetState(dbdev *dao.Device, state string) {
 	dbdev.State = state
 	saveAndNotify(dbdev)
-	dao.PersistLog(device, "Device State "+state)
+	dao.PersistLog(dbdev.ID, "Device State "+state)
 }
 
 func checkAndSetAutoOff(device *dao.Device) {

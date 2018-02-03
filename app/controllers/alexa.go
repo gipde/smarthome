@@ -117,7 +117,7 @@ func (c Alexa) reportStateHandler(request *alexa.Request, device *dao.Device, he
 // switch Handler
 func (c Alexa) switchHandler(request *alexa.Request, device *dao.Device, state string, headerName string) revel.Result {
 	device.State = state
-	SetState(device.ID, state)
+	SetStateWithCheckAutoOff(device, state)
 	return c.reportStateHandler(request, device, headerName)
 }
 

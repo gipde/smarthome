@@ -25,6 +25,6 @@ func PersistLog(device uint, message string) {
 
 func GetLogs(device uint) *[]Log {
 	var logs []Log
-	Db.Where("device_id = ?", device).Find(&logs)
+	Db.Order("time desc").Limit(50).Where("device_id = ?", device).Find(&logs)
 	return &logs
 }

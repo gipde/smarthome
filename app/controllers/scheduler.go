@@ -30,7 +30,8 @@ func executor() {
 			now := time.Now()
 			schedules := dao.GetSchedulesForTime(now.Hour(), now.Minute())
 			for _, sched := range *schedules {
-				SetState(sched.DeviceID, sched.State)
+				dbdev := dao.GetDeviceById(sched.DeviceID)
+				SetState(dbdev, sched.State)
 				if !sched.OneTime {
 					sched.LastRun = now
 					sched.NextRun = now.AddDate(0, 0, 7)
