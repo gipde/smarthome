@@ -58,9 +58,6 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	// start consumer-handler
 	consumerHandler(ws, consumer, c.getCurrentUserID())
 
-	// connection state
-	primaryConnector := make(map[uint]bool)
-
 	//external Receiver from Websocket
 	for {
 		var msg string
@@ -104,7 +101,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 					ID   string
 				}{
 					Time: time.Now(),
-					ID:   consumer.Id,
+					ID:   consumer.ID,
 				},
 			})
 
@@ -118,13 +115,15 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 			ws.MessageSendJSON(convertToDevcom(dbdev, devcom.StateResponse))
 
 		case devcom.SetState:
-			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
+			modify(incoming.Device.ID, c.getCurrentUserID(), func(device *dao.Device) bool {
 				device.State = fmt.Sprintf("%v", incoming.PayLoad)
+				checkAndSetAutoOff(device)
+				dao.PersistLog(device.ID, "Device state: "+device.State)
 				return true
 			})
 
 		case devcom.FlipState:
-			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
+			modify(incoming.Device.ID, c.getCurrentUserID(), func(device *dao.Device) bool {
 				// only for conected devices
 				switch device.State {
 				case alexa.ON:
@@ -132,24 +131,27 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 				case alexa.OFF:
 					device.State = alexa.ON
 				}
+				dao.PersistLog(device.ID, "Device state: "+device.State)
+				checkAndSetAutoOff(device)
 				return true
 			})
 
 		case devcom.Connect:
-			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
-				device.Connected = true
-				if _, ok := primaryConnector[device.ID]; ok {
+			modify(incoming.Device.ID, c.getCurrentUserID(), func(device *dao.Device) bool {
+				if device.Connected != "" {
 					c.Log.Error("Device already connected - cannot connect")
 					return false
 				}
-				primaryConnector[device.ID] = true
+				// check if connected
+				device.Connected = consumer.ID
+				dao.PersistLog(device.ID, "Device connected: "+consumer.ID)
 				return true
 			})
 
 		case devcom.Disconnect:
-			setState(&ws, incoming, c.getCurrentUserID(), func(device *dao.Device) bool {
-				device.Connected = false
-				delete(primaryConnector, device.ID)
+			modify(incoming.Device.ID, c.getCurrentUserID(), func(device *dao.Device) bool {
+				dao.PersistLog(device.ID, "Device disconnected: "+device.Connected)
+				device.Connected = ""
 				dao.SaveDevice(device)
 				// send to all Consumers
 				notifyAlLConsumer(c.getCurrentUserID(), convertToDevcom(device, devcom.StateUpdate))
@@ -159,15 +161,14 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
 	}
 
-	// loop over all entries in primaryConnecotr (per device)
+	// loop over all devices
 	// if this was the connetion who has directly connected to the device -> disconnect and notify
-	for k, v := range primaryConnector {
-		if v {
-			c.Log.Debug("Primary Connector closed, inform other")
-			dbdev := dao.GetDevice(c.getCurrentUserID(), k)
-			dbdev.Connected = false
-			notifyAlLConsumer(c.getCurrentUserID(), convertToDevcom(dbdev, devcom.StateUpdate))
-			dao.SaveDevice(dbdev)
+	for _, dbdev := range *dao.GetAllDevices(c.getCurrentUserID()) {
+		if dbdev.Connected == consumer.ID {
+			dbdev.Connected = ""
+			c.Log.Debug("Connector disconnected from ", "device", dbdev.ID, "consumer", consumer.ID)
+			notifyAlLConsumer(c.getCurrentUserID(), convertToDevcom(&dbdev, devcom.StateUpdate))
+			dao.SaveDevice(&dbdev)
 		}
 	}
 
@@ -176,13 +177,34 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	return nil
 }
 
-func setState(ws *revel.ServerWebSocket, incoming devcom.DevProto, useroid uint, payloadhdl func(device *dao.Device) bool) {
-	dbdev := dao.FindDeviceByID(useroid, incoming.Device.ID)
-	// save only if device is connected and hdl returns true
-	if payloadhdl(dbdev) && dbdev.Connected {
+func SetState(device uint, state string) {
+	dbdev := dao.GetDeviceById(device)
+	dbdev.State = state
+	saveAndNotify(dbdev)
+	dao.PersistLog(device, "Device State "+state)
+}
+
+func checkAndSetAutoOff(device *dao.Device) {
+	if device.AutoCountDown > 0 && device.State == alexa.ON {
+		dao.PersistLog(device.ID, "set Countdown (minutes): "+strconv.Itoa(device.AutoCountDown))
+		sched := dao.CreateCountDown(time.Now().Add(time.Duration(device.AutoCountDown)*time.Minute), alexa.OFF, device.ID)
+		dao.SaveSchedule(sched)
+	}
+}
+
+func saveAndNotify(dbdev *dao.Device) {
+	if dbdev.Connected != "" {
 		dao.SaveDevice(dbdev)
 		// send to all Consumers
-		notifyAlLConsumer(useroid, convertToDevcom(dbdev, devcom.StateUpdate))
+		notifyAlLConsumer(dbdev.UserID, convertToDevcom(dbdev, devcom.StateUpdate))
+	}
+}
+
+func modify(devName string, useroid uint, callback func(device *dao.Device) bool) {
+	dbdev := dao.FindDeviceByID(useroid, devName)
+	// save only if device is connected and hdl returns true
+	if callback(dbdev) {
+		saveAndNotify(dbdev)
 	}
 }
 

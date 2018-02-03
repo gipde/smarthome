@@ -39,12 +39,12 @@ func (t *AppTest) TestLogin2() {
 
 func (t *AppTest) TestRedirectToIntentionalPage() {
 	// first we want to enter Oauth page
-	t.GetCustom("http://localhost:8180/Main/Oauth").Send()
+	t.GetCustom(app.PublicHost + app.ContextRoot + "/main/oauth2").Send()
 	// but we are not logged in
 	t.AssertContains("login-submit")
 	t.AssertStatus(200)
 	// we send credentials to Login
-	t.PostCustom("http://localhost:8180/Main/Login", "application/x-www-form-urlencoded",
+	t.PostCustom(app.PublicHost+app.ContextRoot+"/main/login", "application/x-www-form-urlencoded",
 		strings.NewReader("username=admin&password=admin")).Send()
 
 	// now we should be on the Oauth page

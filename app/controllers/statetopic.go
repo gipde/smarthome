@@ -13,7 +13,7 @@ var log = revel.RootLog.New("module", "state")
 // Internal Message Consumer per User
 // for notifying all connected clients
 type Consumer struct {
-	Id    string
+	ID    string
 	Input chan devcom.DevProto
 }
 
@@ -28,6 +28,7 @@ type StateTopic struct {
 var topics = make(map[uint]*StateTopic)
 
 func init() {
+	revel.AppLog.Debug("Init")
 	revel.OnAppStart(consumerPing)
 }
 
@@ -67,7 +68,7 @@ func register(uoid uint, ip string) (chan devcom.DevProto, Consumer) {
 	usertopic := topics[uoid]
 	// we add a consumer
 	consumer := Consumer{
-		Id:    ip + "-" + app.NewUUID(),
+		ID:    ip + "-" + app.NewUUID(),
 		Input: make(chan devcom.DevProto),
 	}
 	usertopic.Consumer = append(usertopic.Consumer, consumer)
@@ -138,7 +139,7 @@ func topicHandler(stateTopic *StateTopic) {
 func consumerHandler(ws revel.ServerWebSocket, consumer Consumer, uid uint) {
 	//internal Receiver from StateTopic loop forever
 	go func() {
-		log.Debug("we start a new Consumer goroutine: " + consumer.Id)
+		log.Debug("we start a new Consumer goroutine: " + consumer.ID)
 		for {
 			msg, more := <-consumer.Input
 			if more {
@@ -162,13 +163,14 @@ func consumerHandler(ws revel.ServerWebSocket, consumer Consumer, uid uint) {
 
 func notifyAlLConsumer(uid uint, msg *devcom.DevProto) {
 	// check if topic exists -> because it could be cleared from a consumer handler
-	usertopic := topics[uid]
-	log.Debug("we notify any consumer", "user", uid, "msg", msg)
-	usertopic.TopicMutex.Lock()
-	if topics[uid] != nil {
-		topics[uid].Input <- *msg
-	} else {
-		log.Error("want to inform consumers, but topic already closed")
+	if usertopic := topics[uid]; usertopic != nil {
+		log.Debug("we notify any consumer", "user", uid, "msg", msg)
+		usertopic.TopicMutex.Lock()
+		if topics[uid] != nil {
+			topics[uid].Input <- *msg
+		} else {
+			log.Error("want to inform consumers, but topic already closed")
+		}
+		usertopic.TopicMutex.Unlock()
 	}
-	usertopic.TopicMutex.Unlock()
 }

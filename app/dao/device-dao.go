@@ -35,7 +35,13 @@ func FindDeviceByID(user uint, id string) *Device {
 	return &device
 }
 
-func GetDevice(user uint, id uint) *Device {
+func FindDevice(user uint, id uint) *Device {
+	var device Device
+	Db.Find(&device, id).Where("user = ? ", user)
+	return &device
+}
+
+func GetDeviceById(id uint) *Device {
 	var device Device
 	Db.Find(&device, id)
 	return &device

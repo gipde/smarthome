@@ -18,13 +18,14 @@ type User struct {
 
 type Device struct {
 	gorm.Model
-	UserID      uint
-	Name        string
-	Description string
-	Producer    string
-	DeviceType  int
-	State       string // eg a json fragment
-	Connected   bool
+	UserID        uint
+	Name          string
+	Description   string
+	Producer      string
+	DeviceType    int
+	State         string // eg a json fragment
+	Connected     string
+	AutoCountDown int
 }
 
 type AuthorizeEntry struct {
@@ -41,4 +42,20 @@ type Token struct {
 	TokenType fosite.TokenType
 	Signature string
 	PayLoad   []byte
+}
+
+type Schedule struct {
+	gorm.Model
+	DeviceID uint
+	LastRun  time.Time
+	NextRun  time.Time
+	State    string
+	OneTime  bool
+}
+
+type Log struct {
+	Time     time.Time
+	Level    uint
+	DeviceID uint
+	Message  string
 }

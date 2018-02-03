@@ -9,6 +9,11 @@ import (
 
 var Db *gorm.DB
 
+func init() {
+	revel.AppLog.Debug("Init")
+	revel.OnAppStart(InitDB)
+}
+
 func InitDB() {
 
 	revel.AppLog.Info("Init DB")
@@ -32,6 +37,8 @@ func InitDB() {
 		&Device{},
 		&AuthorizeEntry{},
 		&Token{},
+		&Log{},
+		&Schedule{},
 	)
 
 	// Create Adminuser

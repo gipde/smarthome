@@ -29,6 +29,7 @@ type Main struct {
 }
 
 func init() {
+	revel.AppLog.Debug("Init")
 	revel.InterceptMethod(Main.genericInterceptor, revel.BEFORE)
 	revel.InterceptMethod(Main.checkUser, revel.BEFORE)
 }
@@ -111,6 +112,21 @@ func (c Main) CreateDevicePassword() revel.Result {
 	return c.Render()
 }
 
+func (c Main) DeviceEdit(deviceId uint) revel.Result {
+	device := dao.FindDevice(c.getCurrentUserID(), deviceId)
+	logs := dao.GetLogs(deviceId)
+	scheds := dao.GetSchedules(deviceId)
+	c.ViewArgs["device"] = device
+	c.ViewArgs["logs"] = logs
+	c.ViewArgs["scheds"] = scheds
+	lastTab := c.Flash.Data["activeTab"]
+	if lastTab == "" {
+		lastTab = "#info"
+	}
+	c.ViewArgs["activeTab"] = lastTab
+	return c.Render()
+}
+
 // Actions
 // ***********************************
 
@@ -161,8 +177,30 @@ func (c Main) UserDel(id string) revel.Result {
 // CreateDevice creates a Device
 func (c Main) CreateDevice(device dao.Device) revel.Result {
 	device.UserID = c.getCurrentUserID()
-	dao.CreateDevice(&device)
-	return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
+	c.Log.Debug("Create Device", "device", device)
+	c.Validation.Required(device.Name).Message("Device Name nicht angegeben")
+	c.Validation.Required(device.Producer).Message("Hersteller nicht angegeben")
+	c.Validation.Required(device.Description).Message("Beschreibung nicht angegeben")
+
+	if !c.Validation.HasErrors() {
+		dao.CreateDevice(&device)
+		dao.PersistLog(device.ID, "Device Created")
+		return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
+	} else {
+		c.Validation.Keep()
+		return c.Redirect(app.ContextRoot + routes.Main.DeviceNew())
+	}
+}
+
+func (c Main) UpdateDevice(device dao.Device) revel.Result {
+	c.Log.Info("UpdateDevice", "device", device)
+	dao.PersistLog(device.ID, "Device Updated")
+	dbdev := dao.FindDevice(c.getCurrentUserID(), device.ID)
+	dbdev.AutoCountDown = device.AutoCountDown
+	dbdev.Description = device.Description
+	dbdev.Name = device.Name
+	dao.SaveDevice(dbdev)
+	return c.Redirect(routes.Main.Dashboard())
 }
 
 // DeleteDevice deletes a Device
@@ -173,6 +211,29 @@ func (c Main) DeleteDevice(id string) revel.Result {
 
 	dao.DeleteDevice(device)
 	return c.Redirect(app.ContextRoot + routes.Main.DeviceList())
+}
+
+// Save Cron Entry
+func (c Main) AddSchedule(SchedWeekday, SchedTime, SchedStatus string, SchedDevice uint, SchedOnce bool) revel.Result {
+	//TODO: Check if device  belongs to user
+	c.Log.Info("add schedule: ", "params", c.Params)
+	c.Flash.Out["activeTab"] = "#schedule"
+
+	c.Validation.Required(SchedTime)
+
+	sched := dao.CreateSchedule(SchedWeekday, SchedTime, SchedStatus, SchedDevice, SchedOnce)
+
+	c.Log.Info("new Schedule", "sched", sched)
+	if sched != nil {
+		dao.SaveSchedule(sched)
+	} else {
+		c.Validation.Error("Fehler beim Speichern")
+	}
+
+	if c.Validation.HasErrors() {
+		c.Validation.Keep()
+	}
+	return c.Redirect(app.ContextRoot + routes.Main.DeviceEdit(1))
 }
 
 func (c Main) getCurrentUserID() uint {

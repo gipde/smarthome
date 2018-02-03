@@ -1,8 +1,18 @@
 {{template "Main/mheader.html" .}} Actions:
 
-<a href="{{.contextRoot}}/main/createDevicePassword" class="btn btn-primary">Generate Device-Password</a>
-<a href="{{.contextRoot}}/main/createdev" class="btn btn-primary">Create Devices</a>
-<a href="{{.contextRoot}}/debug/listtokens" class="btn btn-primary" role="button">List Tokens</a>
-<a href="{{.contextRoot}}/debug/listgoroutines" class="btn btn-primary" role="button">List Goroutines</a>
-<a href="{{.contextRoot}}/debug/liststatetopic" class="btn btn-primary" role="button">List StateTopic</a>
+<a href="{{.contextRoot}}/main/createDevicePassword" class="btn btn-primary">Generate Device-Password</a><br>
+<a href="{{.contextRoot}}/main/createdev" class="btn btn-primary">Create Devices</a><br>
+<a href="{{.contextRoot}}/debug/listtokens" class="btn btn-primary" role="button">List Tokens</a><br>
+<a href="{{.contextRoot}}/debug/listgoroutines" class="btn btn-primary" role="button">List Goroutines</a><br>
+<a href="{{.contextRoot}}/debug/liststatetopic" class="btn btn-primary" role="button">List StateTopic</a><br>
+
+<form action="{{.contextRoot}}/debug/setstate">
+    <input type="text" name="device" placeholder="int DeviceID">
+    <select name="state"> 
+        <option value="ON">ON</option>
+        <option value="OFF">OFF</option>
+    </select>
+    <input type="text" name="connected" placeholder="connectid (empty==offline)">
+    <button type="submit" class="btn btn-primary">Set State</button>
+</form>
 <br> {{template "Main/mfooter.html" .}}

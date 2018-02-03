@@ -22,6 +22,7 @@ const (
 var conf *oauth2.Config
 
 func init() {
+	revel.AppLog.Debug("Init")
 	revel.OnAppStart(initGoogleOauth2)
 }
 

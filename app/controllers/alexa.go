@@ -145,7 +145,7 @@ func checkUser(r *alexa.Request) (*dao.User, error) {
 		token = r.Directive.Endpoint.Scope.Token
 	}
 
-	valid, username := app.CheckToken(token)
+	valid, username := CheckToken(token)
 
 	user := dao.GetUser(username)
 	if valid == false {

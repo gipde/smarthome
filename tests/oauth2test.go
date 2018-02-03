@@ -6,8 +6,9 @@ import (
 	"golang.org/x/oauth2"
 	"net/http"
 	"net/url"
-
 	"schneidernet/smarthome/app"
+	"schneidernet/smarthome/app/controllers"
+
 	"strings"
 )
 
@@ -98,7 +99,7 @@ func (t *OauthTest) TestOAuth2() {
 	revel.AppLog.Infof("TOKEN: %+v", tok)
 
 	// 7. wir springen hier zur Serverseite und versuchen den Token zu validieren
-	active, username := app.CheckToken(tok.AccessToken)
+	active, username := controllers.CheckToken(tok.AccessToken)
 	t.Assert(active == true)
 	t.Assert(username == "admin")
 
@@ -116,7 +117,7 @@ func (t *OauthTest) TestOAuth2() {
 	t.AssertStatus(200)
 
 	// 9. wir versuchen mit einem illegalen Token zu arbeiten (das ist der den wir vorher widerrufen haben)
-	active, username = app.CheckToken(tok.AccessToken)
+	active, username = controllers.CheckToken(tok.AccessToken)
 	t.Assert(username == "")
 	t.Assert(active == false)
 
@@ -127,6 +128,6 @@ func (t *OauthTest) TestOAuth2() {
 
 func (t *OauthTest) TestIntrospect() {
 
-	active, _ := app.CheckToken("bn2Vu1oyGZWT9ZTQDNwCKXuD0obcIok_1MGMcFyW1zA.6ROtmbJkyMlGlstLHZb76gO0IKIJ0c2evZ17iFN5rBw")
+	active, _ := controllers.CheckToken("bn2Vu1oyGZWT9ZTQDNwCKXuD0obcIok_1MGMcFyW1zA.6ROtmbJkyMlGlstLHZb76gO0IKIJ0c2evZ17iFN5rBw")
 	t.Assert(active == false)
 }

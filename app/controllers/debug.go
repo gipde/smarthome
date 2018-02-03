@@ -39,7 +39,7 @@ func (c Debug) ListTokens() revel.Result {
 
 // CheckToken verifies the validity of a token
 func (c Debug) CheckToken(token string) revel.Result {
-	valid, user := app.CheckToken(token)
+	valid, user := CheckToken(token)
 	return c.RenderText(fmt.Sprintf("active: %t\nuser: %s\n", valid, user))
 }
 
@@ -120,4 +120,14 @@ func (c Debug) ListStateTopic() revel.Result {
 		result += "\n"
 	}
 	return c.RenderText(result)
+}
+
+func (c Debug) SetState(device uint, state string, connected string) revel.Result {
+	c.Log.Debug("set state", "device", device, "state", state, "connected", connected)
+	dbdev := dao.GetDeviceById(device)
+	dbdev.State = state
+	dbdev.Connected = connected
+	saveAndNotify(dbdev)
+
+	return c.Redirect(routes.Main.Debug())
 }

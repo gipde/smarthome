@@ -25,7 +25,7 @@
                 </tr>
                 {{range .devices}}
                 <tr>
-                    <td>{{.ID}}</td>
+                    <td><a href="deviceedit?deviceId={{.ID}}">{{.ID}}</a></td>
                     <td>{{.Name}}</td>
                     <td>{{.Description}}</td>
                     <td>{{.Producer}}</td>

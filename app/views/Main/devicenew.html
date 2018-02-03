@@ -5,6 +5,13 @@
         <h3><span></span> Neues Gerät hinzufügen</h3>
     </div>
 
+    {{if .errors}}
+    <div class="alert alert-danger alert-dismissable fade in">
+        {{range .errors}}
+        <li>{{.}} {{end}}
+    </div>
+    {{end}}
+
     <div class="container">
         <h2>Anlage Device</h2>
         <form action="{{.contextRoot}}/main/createdevice" method="post">
@@ -27,6 +34,10 @@
                         <option value={{$index}} >{{$value}}</option>
                         {{ end }}
                   </select>
+            </div>
+            <div class="form-group ">
+                <label for="autocountdown">Auto Countdown</label>
+                <input type="autocount" class="form-control" id="autocountdown" placeholder="AutoCountDown" name="device.AutoCountDown">
             </div>
             <button type="submit" class="btn btn-default">Erzeugen</button>
         </form>

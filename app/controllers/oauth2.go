@@ -1,4 +1,4 @@
-package app
+package controllers
 
 import (
 	"crypto/rand"
@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
 	"strings"
 	"time"
@@ -27,6 +28,13 @@ var (
 	oauth2Provider  fosite.OAuth2Provider
 	smartHomeClient clientcredentials.Config
 )
+
+func init() {
+	revel.AppLog.Debug("Init")
+	revel.OnAppStart(initOauth2)
+	revel.OnAppStart(installHandlers)
+
+}
 
 func initOauth2() {
 	var clientconfig string
@@ -58,7 +66,7 @@ func initOauth2() {
 
 	initProvider()
 
-	// start Token Cleaner
+	// Oauth2 Tokens
 	go tokenCleaner()
 
 }
@@ -91,14 +99,6 @@ func initProvider() {
 		compose.OAuth2TokenRevocationFactory,
 		compose.OAuth2TokenIntrospectionFactory,
 	)
-}
-
-// Token Cleaner
-func tokenCleaner() {
-	for {
-		dao.CleanExpiredTokens()
-		time.Sleep(time.Minute)
-	}
 }
 
 func newSession(user string) *fosite.DefaultSession {
@@ -145,7 +145,7 @@ func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 	pars := req.Form.Encode()
 
 	// No Valid-Session -> Redirect to Resource-Server
-	http.Redirect(rw, req, PublicHost+ContextRoot+"/Main/Oauth2?"+pars, 302)
+	http.Redirect(rw, req, app.PublicHost+app.ContextRoot+"/Main/Oauth2?"+pars, 302)
 }
 
 func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, rw http.ResponseWriter, user string) {
@@ -368,4 +368,35 @@ func (c OAuthStorageAdapter) RevokeAccessToken(ctx context.Context, requestID st
 func (c OAuthStorageAdapter) Authenticate(ctx context.Context, name string, secret string) error {
 	revel.AppLog.Infof("Authenticate: %+v", ctx)
 	return nil
+}
+
+func installHandlers() {
+	revel.AddInitEventHandler(func(event int, _ interface{}) (r int) {
+		if event == revel.ENGINE_STARTED {
+
+			srvHandler := &revel.CurrentEngine.(*revel.GoHttpServer).Server.Handler
+			revelHandler := *srvHandler
+
+			serveMux := http.NewServeMux()
+			serveMux.Handle("/", revelHandler) // the old handler
+			serveMux.Handle("/oauth2/auth",
+				http.HandlerFunc(AuthorizeHandlerFunc)) // authentication handler
+			serveMux.Handle("/oauth2/token",
+				http.HandlerFunc(TokenHandlerFunc)) // token handler (exchange,refresh,client-credentials)
+			serveMux.Handle("/oauth2/introspect",
+				http.HandlerFunc(IntrospectionHandlerFunc)) // introsepct token
+			serveMux.Handle("/oauth2/revoke",
+				http.HandlerFunc(RevocationHandlerFunc)) // revoke token
+			*srvHandler = serveMux
+		}
+		return
+	})
+}
+
+// Token Cleaner
+func tokenCleaner() {
+	for {
+		dao.CleanExpiredTokens()
+		time.Sleep(time.Minute)
+	}
 }

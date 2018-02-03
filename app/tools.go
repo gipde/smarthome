@@ -22,3 +22,12 @@ func RandToken(size int) string {
 	rand.Read(b)
 	return base64.StdEncoding.EncodeToString(b)
 }
+
+func SliceIndex(len int, predicate func(i int) bool) int {
+	for i := 0; i < len; i++ {
+		if predicate(i) {
+			return i
+		}
+	}
+	return -1
+}

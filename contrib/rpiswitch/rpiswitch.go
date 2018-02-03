@@ -120,6 +120,7 @@ func startWebsocket(pin rpio.Pin) {
 		}
 		//error on websocket
 		if wsErr != nil {
+			ws.Close()
 			return
 		}
 		if ctrlC {

@@ -11,7 +11,7 @@ type Device struct {
 	ID          string `json:"id,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
-	Connected   bool   `json:"connected"`
+	Connected   string `json:"connected"`
 	DeviceType  int    `json:"devicetype"`
 }
 

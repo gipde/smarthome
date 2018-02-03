@@ -2,8 +2,6 @@ package app
 
 import (
 	"github.com/revel/revel"
-	"net/http"
-	"schneidernet/smarthome/app/dao"
 	"time"
 )
 
@@ -41,14 +39,11 @@ func init() {
 	// Register startup functions with OnAppStart
 	// revel.DevMode and revel.RunMode only work inside of OnAppStart. See Example Startup Script
 	// ( order dependent )
-	revel.OnAppStart(installHandlers)
-	revel.OnAppStart(ExampleStartupScript)
-	revel.OnAppStart(dao.InitDB)
-	revel.OnAppStart(setAppPathes)
-	revel.OnAppStart(initOauth2)
 
-	// revel.OnAppStart(FillCache)
-	revel.AppLog.Info("Initializing Ready")
+	revel.OnAppStart(Mark)
+	revel.OnAppStart(setAppPathes)
+
+	//revel.OnAppStart(FillCache)
 
 }
 
@@ -63,7 +58,7 @@ var HeaderFilter = func(c *revel.Controller, fc []revel.Filter) {
 	fc[0](c, fc[1:]) // Execute the next filter stage.
 }
 
-func ExampleStartupScript() {
+func Mark() {
 	go markForever()
 }
 
@@ -78,27 +73,4 @@ func setAppPathes() {
 	ContextRoot, _ = revel.Config.String("site.contextroot")
 	WebSocketHost, _ = revel.Config.String("site.websocket")
 	PublicHost, _ = revel.Config.String("site.publicurl")
-}
-
-func installHandlers() {
-	revel.AddInitEventHandler(func(event int, _ interface{}) (r int) {
-		if event == revel.ENGINE_STARTED {
-
-			srvHandler := &revel.CurrentEngine.(*revel.GoHttpServer).Server.Handler
-			revelHandler := *srvHandler
-
-			serveMux := http.NewServeMux()
-			serveMux.Handle("/", revelHandler) // the old handler
-			serveMux.Handle("/oauth2/auth",
-				http.HandlerFunc(AuthorizeHandlerFunc)) // authentication handler
-			serveMux.Handle("/oauth2/token",
-				http.HandlerFunc(TokenHandlerFunc)) // token handler (exchange,refresh,client-credentials)
-			serveMux.Handle("/oauth2/introspect",
-				http.HandlerFunc(IntrospectionHandlerFunc)) // introsepct token
-			serveMux.Handle("/oauth2/revoke",
-				http.HandlerFunc(RevocationHandlerFunc)) // revoke token
-			*srvHandler = serveMux
-		}
-		return
-	})
 }

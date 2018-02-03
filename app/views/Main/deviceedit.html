@@ -1,0 +1,173 @@
+{{template "Main/mheader.html" .}}
+
+<div class="container">
+
+
+    <h2>Device Settings</h2>
+    <ul class="nav nav-tabs" id="mytabs">
+        <li>
+            <a data-toggle="tab" href="#info">Informationen</a>
+        </li>
+        <li>
+            <a data-toggle="tab" href="#setting">Einstellungen</a>
+        </li>
+        <li>
+            <a data-toggle="tab" href="#schedule">Zeitsteuerung</a>
+        </li>
+        <li>
+            <a data-toggle="tab" href="#history">Verlauf</a>
+        </li>
+    </ul>
+    <script>
+        $(function() {
+            $('#mytabs a[href="{{.activeTab}}"]').tab('show');
+        })
+    </script>
+    <style>
+        .form-inline * {
+            margin: 0px 3px !important;
+        }
+    </style>
+
+    <div class="tab-content">
+        <div id="info" class="tab-pane fade in">
+            <h3>Infos</h3>
+            <table class="table table-striped">
+                <tbody>
+                    <tr>
+                        <td>Device ID</td>
+                        <td>{{.device.ID}}</td>
+                    </tr>
+                    <tr>
+                        <td>Hersteller</td>
+                        <td>{{.device.Producer}}</td>
+                    </tr>
+                    <tr>
+                        <td>Gerätetyp</td>
+                        <td>{{.device.DeviceType}}</td>
+                    </tr>
+                    <tr>
+                        <td>Connected</td>
+                        <td>{{.device.Connected}}</td>
+                    </tr>
+                    <tr>
+                        <td>Zustand</td>
+                        <td>{{.device.State}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="setting" class="tab-pane fade in">
+            <h3>Einstellungen</h3>
+            <form action="{{.contextRoot}}/main/updatedevice" method="POST">
+                <input type="hidden" name="device.ID" value="{{.device.ID}}">
+                <div class="form-group">
+                    <label for="name">Device Name:</label>
+                    <input type="name" class="form-control" id="name" name="device.Name" value="{{.device.Name}}">
+                </div>
+                <div class=" form-group">
+                    <label for="desc">Beschreibung:</label>
+                    <input type="desc" class="form-control" id="desc" name="device.Description" value="{{.device.Description}}">
+                </div>
+                <div class="form-group">
+                    <label for="autocd">AutoCountdown:</label>
+                    <input type="autocd" class="form-control" id="autocd" name="device.AutoCountDown" value="{{.device.AutoCountDown}}">
+                </div>
+                <button type="submit" class="btn btn-default">Speichern</button>
+            </form>
+        </div>
+        <div id="schedule" class="tab-pane fade in">
+            <h3>Zeitsteuerung</h3>
+            {{if .errors}}
+            <div class="alert alert-danger alert-dismissable fade in">
+                {{.errors}}
+            </div>
+            {{end}}
+            <div class="container">
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h4 class="panel-title">
+                                <a data-toggle="collapse" href="#collapse1">Create Entry +</a>
+                            </h4>
+                        </div>
+                        <div id="collapse1" class="panel-collapse collapse">
+                            <form action="{{.contextRoot}}/main/addschedule" method="post" class="form-inline" style="margin:3px">
+                                <div class="panel-body">
+                                    <div class="form-group">
+                                        <label for="Weekday">Wochentag</label>
+                                        <select class="form-control" name="SchedWeekday">
+                                            <option>Montag</option>
+                                            <option>Dienstag</option>
+                                            <option>Mittwoch</option>
+                                            <option>Donnerstag</option>
+                                            <option>Freitag</option>
+                                            <option>Samstag</option>
+                                            <option>Sonntag</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="SchedTime">Uhrzeit</label>
+                                        <input type="text" class="form-control" name="SchedTime" placeholder="Uhrzeit" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="SchedStatus">Status</label>
+                                        <select class="form-control" name="SchedStatus">
+                                            <option>ON</option>
+                                            <option>OFF</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="einmalig">einmalig</label>
+                                        <input type="checkbox" name="SchedOnce" value="true"></label>
+                                    </div>
+                                </div>
+                                <input type="hidden" value="{{.device.ID}}" name="SchedDevice" />
+                                <div class="panel-footer">
+                                    <button type="submit" class="btn btn-primary">Speichern</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Letzter Lauf</th>
+                            <th>nächster Lauf</th>
+                            <th>Status</th>
+                            <th>einmalig</th>
+                        </tr>
+                    </thead>
+                    <tbody> {{ range .scheds }}
+                        <tr>
+                            <td>{{.LastRun}}</td>
+                            <td>{{.NextRun}}</td>
+                            <td>{{.State}}</td>
+                            <td>{{.OneTime}}</td>
+                        </tr> {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="history" class="tab-pane fade">
+            <h3>Log Einträge</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Zeit</th>
+                        <th>Level</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody> {{ range .logs }}
+                    <tr>
+                        <td>{{.Time}}</td>
+                        <td>{{.Level}}</td>
+                        <td>{{.Message}}</td>
+                    </tr> {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <br>{{template "Main/mfooter.html" .}}

@@ -13,7 +13,7 @@ func GetTestDevices() *[]Device {
 			Producer:    "Schneidernet",
 			DeviceType:  alexa.DeviceLight.ID(),
 			State:       alexa.ON,
-			Connected:   true,
+			Connected:   "client",
 		},
 		Device{
 			Name:        "Warmwasser Heizung",
