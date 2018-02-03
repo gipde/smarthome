@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/revel/revel"
@@ -56,6 +57,8 @@ func (c Alexa) API(r alexa.Request) revel.Result {
 // discovery Request
 func (c Alexa) discovery(useroid uint) revel.Result {
 	response := generateDiscoveryResponse(dao.GetAllDevices(useroid))
+	value, _ := json.MarshalIndent(response, "", "   ")
+	c.Log.Debugf("discovery %s", string(value))
 	return c.RenderJSON(response)
 }
 

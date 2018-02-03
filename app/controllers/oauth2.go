@@ -122,23 +122,15 @@ func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// check if permission Accepted
+	revel.AppLog.Debug("url", "permission", req.FormValue("permissionAccepted"))
 	// Check a valid Revel-Session
 	// Session is encrypted, so we can trust
 	cook, err := req.Cookie("REVEL_SESSION")
-	if err == nil && cook != nil {
 
-		session := revel.GetSessionFromCookie(revel.GoCookie(*cook))
-
-		if user, ok := session["userid"]; ok {
-
-			//Grant every requested Scope
-			for _, scope := range ar.GetRequestedScopes() {
-				ar.GrantScope(scope)
-			}
-
-			createAuthorizeResponse(ctx, ar, rw, user)
-			return
-		}
+	if req.FormValue("permissionAccepted") == "true" && err == nil && cook != nil {
+		createResponse(cook, rw, ctx, ar, req)
+		return
 	}
 
 	// Append Parameters to Login-Page for further Redirect back to here
@@ -146,6 +138,25 @@ func AuthorizeHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 
 	// No Valid-Session -> Redirect to Resource-Server
 	http.Redirect(rw, req, app.PublicHost+app.ContextRoot+"/Main/Oauth2?"+pars, 302)
+}
+
+func createResponse(cook *http.Cookie, rw http.ResponseWriter, ctx context.Context, ar fosite.AuthorizeRequester, req *http.Request) {
+
+	session := revel.GetSessionFromCookie(revel.GoCookie(*cook))
+	revel.AppLog.Debug("session", "cookie", session.Cookie())
+
+	if user, ok := session["userid"]; ok {
+
+		//Grant every requested Scope
+		for _, scope := range ar.GetRequestedScopes() {
+			ar.GrantScope(scope)
+		}
+
+		createAuthorizeResponse(ctx, ar, rw, user)
+		return
+	}
+	// what if no userid ?? FIX IT
+
 }
 
 func createAuthorizeResponse(ctx context.Context, ar fosite.AuthorizeRequester, rw http.ResponseWriter, user string) {
@@ -198,9 +209,10 @@ func TokenHandlerFunc(rw http.ResponseWriter, req *http.Request) {
 	// if it is a token exchange, we save the id and the refresh token
 	if accessRequest.GetGrantTypes().Has("authorization_code") {
 
-		dbUser := dao.GetUser(accessRequest.GetSession().GetUsername())
+		user := accessRequest.GetSession().GetUsername()
+		dbUser := dao.GetUser(user)
 		if dbUser == nil {
-			revel.AppLog.Errorf("Logged In User %s nof found", dbUser.UserID)
+			revel.AppLog.Errorf("Logged In User %s nof found", user)
 			return
 		}
 		if dbUser.Authorizations == nil {

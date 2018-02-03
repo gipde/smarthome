@@ -64,6 +64,7 @@ func GetAlexaInterfaceMapping(devicetype int) ([]CapabilityInterface, []string) 
 	switch devicetype {
 	case DeviceSwitch.ID():
 		iface(PowerController)
+		display(SWITCH)
 	case DeviceSocket.ID():
 		iface(PowerController)
 		display(SMARTPLUG)

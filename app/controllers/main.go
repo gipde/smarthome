@@ -77,7 +77,7 @@ func (c Main) UserList() revel.Result {
 
 // Oauth - render Oauth-Page
 func (c Main) Oauth2() revel.Result {
-	c.ViewArgs["action"] = app.ContextRoot + "/oauth2/auth?" + c.Params.Query.Encode()
+	c.ViewArgs["action"] = app.ContextRoot + "/oauth2/auth?permissionAccepted=true&" + c.Params.Query.Encode()
 	for _, s := range []string{"redirect_uri", "scope", "client_id"} {
 		c.ViewArgs[s] = c.Params.Query.Get(s)
 	}
