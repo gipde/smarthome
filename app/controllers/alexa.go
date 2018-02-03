@@ -8,7 +8,6 @@ import (
 	"schneidernet/smarthome/app"
 	"schneidernet/smarthome/app/dao"
 	"schneidernet/smarthome/app/models/alexa"
-	"schneidernet/smarthome/app/models/devcom"
 	"time"
 )
 
@@ -44,9 +43,9 @@ func (c Alexa) API(r alexa.Request) revel.Result {
 	case "ReportState":
 		return c.reportStateHandler(&r, device, "StateReport")
 	case "TurnOn":
-		return c.switchHandler(&r, user.ID, device, alexa.ON, "Response")
+		return c.switchHandler(&r, device, alexa.ON, "Response")
 	case "TurnOff":
-		return c.switchHandler(&r, user.ID, device, alexa.OFF, "Response")
+		return c.switchHandler(&r, device, alexa.OFF, "Response")
 	}
 
 	// Default
@@ -116,11 +115,9 @@ func (c Alexa) reportStateHandler(request *alexa.Request, device *dao.Device, he
 }
 
 // switch Handler
-func (c Alexa) switchHandler(request *alexa.Request, useroid uint, device *dao.Device, state string, headerName string) revel.Result {
+func (c Alexa) switchHandler(request *alexa.Request, device *dao.Device, state string, headerName string) revel.Result {
 	device.State = state
-	topics[useroid].Input <- *convertToDevcom(device, devcom.StateUpdate)
-
-	dao.SaveDevice(device)
+	SetState(device.ID, state)
 	return c.reportStateHandler(request, device, headerName)
 }
 
