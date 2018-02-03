@@ -140,13 +140,19 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 			modify(incoming.Device.ID, c.getCurrentUserID(), func(device *dao.Device) bool {
 				// we accept any (re)connect
 				device.Connected = consumer.ID
+				newState := fmt.Sprintf("%v", incoming.PayLoad)
+				if !(newState == alexa.ON || newState == alexa.OFF) {
+					// no state defined
+					return false
+				}
+				device.State = newState
 				dao.PersistLog(device.ID, "Device connected: "+consumer.ID)
 				return true
 			})
 
 		case devcom.Disconnect:
 			modify(incoming.Device.ID, c.getCurrentUserID(), func(device *dao.Device) bool {
-				dao.PersistLog(device.ID, "Device disconnected: "+device.Connected)
+				dao.PersistLog(device.ID, "Device disconnected normally: "+device.Connected)
 				device.Connected = ""
 				dao.SaveDevice(device)
 				// send to all Consumers
@@ -161,6 +167,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	// if this was the connetion who has directly connected to the device -> disconnect and notify
 	for _, dbdev := range *dao.GetAllDevices(c.getCurrentUserID()) {
 		if dbdev.Connected == consumer.ID {
+			dao.PersistLog(dbdev.ID, "Device disconnected abnormally: "+dbdev.Connected)
 			dbdev.Connected = ""
 			c.Log.Debug("Connector disconnected from ", "device", dbdev.ID, "consumer", consumer.ID)
 			notifyAlLConsumer(c.getCurrentUserID(), convertToDevcom(&dbdev, devcom.StateUpdate))

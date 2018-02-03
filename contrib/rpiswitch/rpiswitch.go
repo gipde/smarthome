@@ -101,14 +101,12 @@ func startWebsocket(pin rpio.Pin) {
 		Device: devcom.Device{
 			ID: *dev,
 		},
+		PayLoad: getState(pin),
 	})
-
-	// .. and transmit current state
-	currentState = getState(pin)
-	transmitState(currentState, ws, dev)
 
 	// Loop Forever
 	for {
+		// if device is switchable via hard-wired-switch
 		if *checkstate {
 			newstate := getState(pin)
 			log.Printf("State from switch: %s > from server %s\n", newstate, currentState)
@@ -120,6 +118,7 @@ func startWebsocket(pin rpio.Pin) {
 		}
 		//error on websocket
 		if wsErr != nil {
+			log.Println("error - we close the connection")
 			ws.Close()
 			return
 		}
@@ -204,11 +203,13 @@ func getState(pin rpio.Pin) string {
 }
 
 func setState(pin rpio.Pin, state string) {
-	log.Println("Switch " + state)
-	if state == On {
-		pin.Low()
-	} else {
-		pin.High()
+	if state != getState(pin) {
+		log.Println("Set Switch " + state)
+		if state == On {
+			pin.Low()
+		} else {
+			pin.High()
+		}
 	}
 	currentState = state
 }
@@ -265,6 +266,7 @@ func cleanUpAndExit(ws *websocket.Conn, dev *string) {
 
 	//chance to get response
 	time.Sleep(1 * time.Second)
+	log.Println("exit - we close the connection")
 	ws.Close()
 
 	//finally exit
