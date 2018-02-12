@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/revel/revel"
@@ -60,18 +59,12 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 
 	//external Receiver from Websocket
 	for {
-		var msg string
-		err := ws.MessageReceiveJSON(&msg)
-		c.Log.Debugf("Received Message %+v -> %s", ws, msg)
+		var incoming devcom.DevProto
+		err := ws.MessageReceiveJSON(&incoming)
+		c.Log.Debugf("Received Message %+v -> %s", ws, incoming)
 		if err != nil {
 			c.Log.Debugf("we got a error on Receiving from Websocket %v", err)
 			break
-		}
-
-		var incoming devcom.DevProto
-		err = json.Unmarshal([]byte(msg), &incoming)
-		if err != nil {
-			c.Log.Errorf("Error in conversion %v", err)
 		}
 
 		switch incoming.Action {
