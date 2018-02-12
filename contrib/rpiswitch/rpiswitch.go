@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"schneidernet/smarthome/app/models/devcom"
+	"sync"
 	"time"
 
 	"github.com/stianeikeland/go-rpio"
@@ -54,6 +55,12 @@ var (
 
 	currentState string
 	wsErr        error
+
+	wg sync.WaitGroup
+)
+
+const (
+	pingInterval = 10 * 60
 )
 
 func main() {
@@ -68,8 +75,11 @@ func main() {
 		wsErr = nil
 		startWebsocket(pin)
 
-		time.Sleep(time.Second * 1)
 		log.Println("Reconnect ...")
+		log.Println("We wait for all goroutines to terminate")
+		wg.Wait()
+
+		time.Sleep(time.Second * 1)
 	}
 }
 
@@ -131,12 +141,19 @@ func startWebsocket(pin rpio.Pin) {
 }
 
 func websocketHandler(ws *websocket.Conn, pin rpio.Pin) {
+	wg.Add(1)
+	defer wg.Done()
+
 	for {
 		var incoming devcom.DevProto
 		err := websocket.JSON.Receive(ws, &incoming)
+		if wsErr != nil {
+			log.Printf("Leaving Receiver, due to error: %v ", wsErr)
+			return
+		}
 		if err != nil {
 			wsErr = err
-			log.Printf("Error: %+v", err)
+			log.Printf("Receive Error (we are leaving): %v %+v", ws, err)
 			return
 		}
 		log.Printf("we received: %+v\n", incoming)
@@ -274,16 +291,23 @@ func cleanUpAndExit(ws *websocket.Conn, dev *string) {
 }
 
 func markHandler(ws *websocket.Conn) {
+	wg.Add(1)
+	defer wg.Done()
+
 	for {
 		log.Println("--MARK--")
 		sendToWebsocket(ws, &devcom.DevProto{
 			Action: devcom.ListeDevices,
 		})
-		//error on websocket
-		if wsErr != nil {
-			return
+
+		// check for error on websocket and wait pingInterval Seconds for next Mark
+		for i := 0; i < pingInterval; i++ {
+			if wsErr != nil {
+				log.Println("We leaving markHandler due to Error")
+				return
+			}
+			time.Sleep(time.Second)
 		}
-		time.Sleep(5 * time.Minute)
 	}
 }
 
