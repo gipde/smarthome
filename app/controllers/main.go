@@ -114,6 +114,10 @@ func (c Main) CreateDevicePassword() revel.Result {
 
 func (c Main) DeviceEdit(deviceId uint) revel.Result {
 	device := dao.FindDevice(c.getCurrentUserID(), deviceId)
+	c.Log.Debug("found device", "device", device)
+	if device == nil {
+		return c.Redirect(app.ContextRoot + routes.Main.Dashboard())
+	}
 	logs := dao.GetLogs(deviceId)
 	scheds := dao.GetSchedules(deviceId)
 	c.ViewArgs["device"] = device
@@ -200,7 +204,9 @@ func (c Main) UpdateDevice(device dao.Device) revel.Result {
 	dbdev.Description = device.Description
 	dbdev.Name = device.Name
 	dao.SaveDevice(dbdev)
-	return c.Redirect(routes.Main.Dashboard())
+
+	c.Flash.Out["activeTab"] = "#setting"
+	return c.Redirect(app.ContextRoot + routes.Main.DeviceEdit(1))
 }
 
 // DeleteDevice deletes a Device
@@ -217,7 +223,6 @@ func (c Main) DeleteDevice(id string) revel.Result {
 func (c Main) AddSchedule(SchedWeekday, SchedTime, SchedStatus string, SchedDevice uint, SchedOnce bool) revel.Result {
 	//TODO: Check if device  belongs to user
 	c.Log.Info("add schedule: ", "params", c.Params)
-	c.Flash.Out["activeTab"] = "#schedule"
 
 	c.Validation.Required(SchedTime)
 
@@ -233,6 +238,27 @@ func (c Main) AddSchedule(SchedWeekday, SchedTime, SchedStatus string, SchedDevi
 	if c.Validation.HasErrors() {
 		c.Validation.Keep()
 	}
+
+	dao.PersistLog(SchedDevice, "new Schedule")
+	c.Flash.Out["activeTab"] = "#schedule"
+	return c.Redirect(app.ContextRoot + routes.Main.DeviceEdit(1))
+}
+
+// Delete Cron Entry
+func (c Main) DeleteSchedule(id uint) revel.Result {
+	schedule := dao.GetSchedule(id)
+	if schedule == nil {
+		c.Log.Error("Unable to delete Schedule: not found")
+	}
+	device := dao.FindDevice(c.getCurrentUserID(), schedule.DeviceID)
+	if device != nil {
+		dao.DeleteSchedule(schedule)
+	} else {
+		c.Log.Error("Unable to delete Schedule: no permission")
+	}
+
+	dao.PersistLog(device.ID, "delete Schedule")
+	c.Flash.Out["activeTab"] = "#schedule"
 	return c.Redirect(app.ContextRoot + routes.Main.DeviceEdit(1))
 }
 
