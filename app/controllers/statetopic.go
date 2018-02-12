@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+const (
+	pingInterval = 10 * 60
+)
+
 var log = revel.RootLog.New("module", "state")
 
 // Internal Message Consumer per User
@@ -32,11 +36,11 @@ func init() {
 	revel.OnAppStart(consumerPing)
 }
 
-// pinging all consumer every 5 min
+// pinging all consumer every pingInterval S
 func consumerPing() {
 	go func() {
 		for {
-			time.Sleep(300 * time.Second)
+			time.Sleep(pingInterval * time.Second)
 			log.Info("sending Ping to all consumer...")
 
 			for user := range topics {
