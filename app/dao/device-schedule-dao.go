@@ -23,13 +23,19 @@ func GetSchedules(deviceID uint) []Schedule {
 	return result
 }
 
+func GetSchedule(id uint) *Schedule {
+	var result Schedule
+	Db.First(&result, id)
+	return &result
+}
+
 func SaveSchedule(sched *Schedule) {
 	Db.Save(sched)
 }
 
 func GetSchedulesForTime(hour, minute int) *[]Schedule {
 	var schedules []Schedule
-	Db.Where("next_run < ?", time.Now()).Find(&schedules)
+	Db.Where("next_run < ?", time.Now()).Order("next_run asc").Find(&schedules)
 	return &schedules
 }
 

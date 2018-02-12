@@ -145,6 +145,11 @@
                             <td>{{.NextRun}}</td>
                             <td>{{.State}}</td>
                             <td>{{.OneTime}}</td>
+                            <td>
+                                <a href="DeleteSchedule?id={{.ID}}">
+                                    <span class="glyphicon glyphicon-remove-circle" aria-hidden="true"></span>
+                                </a>
+                            </td>
                         </tr> {{end}}
                     </tbody>
                 </table>
