@@ -38,6 +38,9 @@ func FindDeviceByID(user uint, id string) *Device {
 func FindDevice(user uint, id uint) *Device {
 	var device Device
 	Db.Find(&device, id).Where("user = ? ", user)
+	if device.ID != id {
+		return nil
+	}
 	return &device
 }
 
