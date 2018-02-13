@@ -1,0 +1,26 @@
+<!-- Basic Header
+
+    included in every site
+
+-->
+
+<!DOCTYPE html>
+
+<html>
+{{ $cr := .contextRoot }}
+
+<head>
+    <title>{{.title}}</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" type="text/css" href="{{.contextRoot}}/public/css/bootstrap-3.3.6.min.css">
+    <script src="{{.contextRoot}}/public/js/jquery-2.2.4.min.js"></script>
+    <script src="{{.contextRoot}}/public/js/bootstrap-3.3.6.min.js"></script>
+    <link rel="shortcut icon" type="image/png" href="{{ $cr }}/public/img/favicon.png"> {{range .moreStyles}}
+    <link rel="stylesheet" type="text/css" href="{{ $cr }}/public/css/{{.}}"> {{end}} {{range .moreScripts}}
+    <script src="{{.contextRoot}}/public/{{.}}" type="text/javascript" charset="utf-8"></script>
+    {{end}}
+</head>
+
+<body>

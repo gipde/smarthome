@@ -36,3 +36,7 @@ go run -race $SCRIPTPATH/src/schneidernet/smarthome/app/tmp/main.go  -importPath
 ```
 
 ## TODO:
+- FR: Device Passwort setzen
+- FR: Purge Device-Logs
+- FR: Versionierung der Anwendung und der kleinere Pakete wie rpiswitch
+- FR: temperatur übertragen

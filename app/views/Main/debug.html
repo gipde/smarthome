@@ -1,4 +1,4 @@
-{{template "Main/mheader.html" .}} Actions:
+{{template "header.html" .}} Actions:
 
 <a href="{{.contextRoot}}/main/createDevicePassword" class="btn btn-primary">Generate Device-Password</a><br>
 <a href="{{.contextRoot}}/main/createdev" class="btn btn-primary">Create Devices</a><br>
@@ -15,4 +15,5 @@
     <input type="text" name="connected" placeholder="connectid (empty==offline)">
     <button type="submit" class="btn btn-primary">Set State</button>
 </form>
-<br> {{template "Main/mfooter.html" .}}
+
+{{template "footer.html" .}}

@@ -1,7 +1,18 @@
-{{append . "moreStyles" "loginpanel.css"}} {{set . "title" "Home"}} {{template "header.html" .}} {{if .flash.error}}
+<!-- include css -->
+{{append . "moreStyles" "loginpanel.css"}}
+<!-- title -->
+{{set . "title" "Login"}}
+<!-- header (only basic) -->
+{{template "bheader.html" .}}
+
+<!-- Error Handling -->
+{{if .flash.error}}
 <div class="alert alert-danger">
     <strong>Fehler: </strong> {{.flash.error}}
-</div> {{else}} {{end}}
+</div>
+{{else}}
+<!--  -->
+{{end}}
 
 <div class="container">
     <div class="row">
@@ -61,4 +72,5 @@
         </div>
     </div>
 </div>
-{{template "footer.html" .}}
+
+{{template "bfooter.html" .}}

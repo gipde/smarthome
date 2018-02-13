@@ -272,6 +272,8 @@ func (c Main) genericInterceptor() revel.Result {
 	// Set app.ContextRoot if we ar behind a rewritng Proxy
 	c.ViewArgs["contextRoot"] = app.ContextRoot
 	c.ViewArgs["websocketHost"] = app.WebSocketHost
+	c.ViewArgs["version"] = app.AppVersion
+	c.ViewArgs["build"] = app.BuildTime
 
 	return nil
 }

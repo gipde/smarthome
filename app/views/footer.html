@@ -1,5 +1,26 @@
-  {{if eq .RunMode "dev"}}
-    {{template "debug.html" .}}
-  {{end}}
-  </body>
-</html>
+<!-- this is the default footer -->
+
+<!-- main column clsing div -->
+</div>
+
+version {{.version}} - build {{.build}}
+<div class="footer">
+    footer
+</div>
+
+<!-- the affix row closing div -->
+</div>
+
+<div class="row affix-row">
+    version {{.version}} - build {{.build}}
+    <div class="footer">
+        footer
+    </div>
+</div>
+
+
+<!-- the container closing div -->
+<!-- </div> -->
+
+
+{{template "bfooter.html" .}}
