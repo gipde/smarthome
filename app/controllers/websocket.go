@@ -57,6 +57,8 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	// start consumer-handler
 	consumerHandler(ws, consumer, c.getCurrentUserID())
 
+	var device devcom.Device
+
 	//external Receiver from Websocket
 	for {
 		var incoming devcom.DevProto
@@ -66,6 +68,7 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 			c.Log.Debugf("we got a error on Receiving from Websocket %v", err)
 			break
 		}
+		device = incoming.Device
 
 		switch incoming.Action {
 
@@ -160,7 +163,6 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 	// if this was the connetion who has directly connected to the device -> disconnect and notify
 	for _, dbdev := range *dao.GetAllDevices(c.getCurrentUserID()) {
 		if dbdev.Connected == consumer.ID {
-			dao.PersistLog(dbdev.ID, "Device disconnected abnormally: "+dbdev.Connected)
 			dbdev.Connected = ""
 			c.Log.Debug("Connector disconnected from ", "device", dbdev.ID, "consumer", consumer.ID)
 			notifyAlLConsumer(c.getCurrentUserID(), convertToDevcom(&dbdev, devcom.StateUpdate))
@@ -168,6 +170,8 @@ func (c Main) DeviceFeed(ws revel.ServerWebSocket) revel.Result {
 		}
 	}
 
+	id := dao.GetIdFromIdStr(device.ID)
+	dao.PersistLog(uint(id), "Device disconnected abnormally")
 	unregister(c.getCurrentUserID(), consumer)
 	c.Log.Debugf("Quit Websocket: %+v", ws)
 	return nil

@@ -1,0 +1,162 @@
+<!-- wenn Doctype angegeben wird, ist es quasi ein Strict Mode HTML5 -->
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <title>Title</title>
+    <link rel="stylesheet" type="text/css" href="../../public/css/bootstrap-4.0.0.min.css">
+    <script src="../../public/js/jquery-3.3.1.min.js"></script>
+    <script src="../../public/js/bootstrap-4.0.0.min.js"></script>
+    <link href="/open-iconic/font/css/open-iconic-bootstrap.css" rel="stylesheet">
+
+
+    <style>
+        /* wg. Strict Mode erforderlich */
+        
+        html {
+            height: 100%;
+            width: 100%;
+        }
+        
+        body {
+            background-color: powderblue;
+            height: 100%;
+            width: 100%;
+        }
+        
+        .master {
+            /* display: grid; */
+            height: 100%;
+            width: 100%;
+            float: left;
+        }
+        
+        .red {
+            width: 50%;
+            background-color: red;
+            /* padding: 20px; */
+        }
+        
+        .blue {
+            width: 50%;
+            background-color: blue;
+            /* padding: 20px; */
+        }
+        
+        .halfsize {
+            padding: 20px;
+            /* border: 5px green solid; */
+            box-sizing: border-box;
+            width: 50%
+        }
+        
+        .sidebar {
+            background-color: burlywood;
+        }
+        
+        .navbarheader {
+            height: 100px;
+        }
+        
+        div {
+            border: 1px red solid;
+        }
+        
+        .ci-back {
+            background-color: lightgrey;
+        }
+        
+        .ci-header {
+            background-color: dodgerblue;
+            height: 100%;
+        }
+        
+        .roundedbox {
+            border: 1px blueviolet solid;
+            border-radius: 25px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12 ci-header">
+                header
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-2 ci-back">
+                <div class="roundedbox">
+                    <center>SmartHome</center>
+                    <span class="oi oi-icon-name" title="icon name" aria-hidden="true"></span>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="pills-home-tab" data-toggle="pill" href="#pills-home" role="tab" aria-controls="pills-home" aria-selected="true">Übersicht</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="pills-profile-tab" data-toggle="pill" href="#pills-profile" role="tab" aria-controls="pills-profile" aria-selected="false">Geräte</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-3 ci-back">
+                <form class="form-inline">
+                    <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+                    <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+                </form>
+            </div>
+            <div class="col-md-2 ci-back">
+                current user (gravatar icon)
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12 ci-header">
+                smarthome divider graphics
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2 ci-back">
+                <div class="ci-back">
+                    <div class="navbarheader">
+                        gip@gmx.de
+                    </div>
+                    <div class="navgar">
+                        Übersicht
+                        <ul>
+                            <li>
+                                test
+                            </li>
+                            <li>
+                                test
+                            </li>
+                            <li>
+                                test
+                            </li>
+
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-md-10">bla</div>
+        </div>
+        <div class="row">
+            <div class="col-md-12 ci-back">
+                <div class="ci-back">
+
+                    footer
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

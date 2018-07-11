@@ -24,10 +24,19 @@ func DeleteDevice(device *Device) {
 	Db.Delete(&device)
 }
 
+func GetIdFromIdStr(id string) uint {
+	numericID, err := strconv.Atoi(strings.TrimPrefix(id, "device-"))
+	if err != nil {
+		revel.AppLog.Error("Unable to convert textual id to integer: ", "id", id)
+		return ^uint(0)
+	}
+	return uint(numericID)
+}
+
 // FindDeviceByID returns device with ID
 func FindDeviceByID(user uint, id string) *Device {
 	var device Device
-	numericID, _ := strconv.Atoi(strings.TrimPrefix(id, "device-"))
+	numericID := GetIdFromIdStr(id)
 
 	revel.AppLog.Debugf("Find Devices for User %d and id %d", user, numericID)
 	Db.Where("user_id = ?", user).Find(&device, numericID)
