@@ -1,21 +1,18 @@
 language: go
 
 go:
-  - 1.8.x
-  - 1.9.x
-  - tip
-
+  - "1.10.x"
+  
 os:
   - linux
-  - osx
 
-  install:
-  # Setting environments variables
+install:
+# Setting environments variables
   - export PATH=$PATH:$HOME/gopath/bin
 
   - go get -v github.com/revel/revel/...
   - go get -v github.com/revel/cmd/revel
 
-  script:
+script:
   - revel version
   - revel test    schneidernet/smarthome

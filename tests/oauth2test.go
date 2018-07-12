@@ -88,6 +88,7 @@ func (t *OauthTest) TestOAuth2() {
 	// 5. Wir tauschen den Auth-Token gegen einen Access-Token
 	tok, err := conf.Exchange(oauth2.NoContext, cod)
 	if err != nil {
+		revel.AppLog.Infof("Error: %+v", err)
 		t.Assert(false)
 	}
 

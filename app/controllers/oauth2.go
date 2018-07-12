@@ -74,8 +74,8 @@ func initOauth2() {
 func initProvider() {
 	// Init Oauth2provider
 	config := compose.Config{
-	// AuthorizeCodeLifespan: time.Minute * 60,
-	// AccessTokenLifespan:   time.Minute * 60,
+		// AuthorizeCodeLifespan: time.Minute * 60,
+		// AccessTokenLifespan:   time.Minute * 60,
 	}
 	strg := OAuthStorageAdapter{}
 
@@ -326,6 +326,11 @@ func (c OAuthStorageAdapter) GetAuthorizeCodeSession(ctx context.Context, code s
 	}
 	json.Unmarshal(*data, &result)
 	return result, nil
+}
+
+func (c OAuthStorageAdapter) InvalidateAuthorizeCodeSession(ctx context.Context, code string) (err error) {
+	//TODO store active bool with token
+	return nil
 }
 
 func (c OAuthStorageAdapter) DeleteAuthorizeCodeSession(ctx context.Context, code string) (err error) {
