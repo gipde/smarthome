@@ -2,7 +2,7 @@ language: go
 
 go:
   - "1.10.x"
-  
+
 os:
   - linux
 
@@ -15,4 +15,5 @@ install:
 
 script:
   - revel version
+  - make
   - revel test    schneidernet/smarthome
